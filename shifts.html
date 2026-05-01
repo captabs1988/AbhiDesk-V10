@@ -272,6 +272,15 @@ table.stbl tr:hover .delbtn{opacity:1;}
 
     <hr class="divider"/>
 
+    <div class="slbl">// Today's Free Time</div>
+    <div class="rbox" id="quotaBox">
+      <div class="rrow"><span class="rlbl">Daily Quota</span><span class="rval sva">12:00:00</span></div>
+      <div class="rrow"><span class="rlbl">Shift Hours Today</span><span class="rval" id="q-shift">0:00:00</span></div>
+      <div class="rrow"><span class="rlbl">Free Time Left</span><span class="rval big" id="q-free" style="color:var(--green)">12:00:00</span></div>
+    </div>
+
+    <hr class="divider"/>
+
     <div class="slbl">// Month Total (view)</div>
     <div class="rbox">
       <div class="rrow"><span class="rlbl">Shifts</span><span class="rval sva" id="r-mn">0</span></div>
@@ -370,6 +379,7 @@ buildIconPick();
 renderTable();
 showPF();
 calc();
+updQuota();
 
 document.addEventListener('click', e => {
   if(!document.getElementById('venueWrap').contains(e.target) &&
@@ -701,7 +711,7 @@ function addShift(){
 
   shifts.push({ id:'sh_'+Date.now(), date:dv, venue:vname, venueId:selVId||null, job, employee:emp, rate, hours:+hours.toFixed(4), startIso:startDt.toISOString(), endIso:endDt.toISOString(), pay });
   shifts.sort((a,b)=>a.startIso.localeCompare(b.startIso));
-  saveS(); renderTable(); showPF(); broadcastJD();
+  saveS(); renderTable(); showPF(); broadcastJD(); updQuota();
 
   const btn=document.getElementById('addBtn');
   btn.textContent='✓ Added!'; btn.style.background='var(--accent)';
@@ -713,7 +723,7 @@ function addShift(){
 // ──────────────────────────────────────────────────────────
 function delShift(id){
   if(!confirm('Delete this shift?')) return;
-  shifts=shifts.filter(s=>s.id!==id); saveS(); renderTable(); showPF(); broadcastJD();
+  shifts=shifts.filter(s=>s.id!==id); saveS(); renderTable(); showPF(); broadcastJD(); updQuota();
 }
 
 // ──────────────────────────────────────────────────────────
@@ -722,7 +732,31 @@ function delShift(id){
 function saveS(){ try{localStorage.setItem('ad_shifts',JSON.stringify(shifts));}catch(e){} }
 function broadcastJD(){
   const dates=[...new Set(shifts.map(s=>s.date))];
-  try{ if(window.parent&&window.parent!==window) window.parent.postMessage({type:'shifts_updated',jobDates:dates},'*'); }catch(e){}
+  const msg={type:'shifts_updated',jobDates:dates,shifts:shifts};
+  try{ if(window.parent&&window.parent!==window) window.parent.postMessage(msg,'*'); }catch(e){}
+}
+
+// ──────────────────────────────────────────────────────────
+// QUOTA (12h daily free time tracker)
+// ──────────────────────────────────────────────────────────
+const DAILY_QUOTA_HRS = 12;
+
+function getTodayISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function updQuota(){
+  const today=getTodayISO();
+  const todayShifts=shifts.filter(s=>s.date===today);
+  const totalShiftHrs=todayShifts.reduce((acc,s)=>acc+s.hours,0);
+  const freeHrs=Math.max(0,DAILY_QUOTA_HRS-totalShiftHrs);
+  document.getElementById('q-shift').textContent=fmtHM(totalShiftHrs);
+  const freeEl=document.getElementById('q-free');
+  if(freeEl){
+    freeEl.textContent=fmtHM(freeHrs);
+    freeEl.style.color=freeHrs<3?'var(--red)':freeHrs<6?'var(--gold)':'var(--green)';
+  }
 }
 
 // ──────────────────────────────────────────────────────────

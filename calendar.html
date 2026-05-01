@@ -393,7 +393,35 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 var YEAR = 2026;
 // ── Job days from Shift Tracker ──
 var jobDays = {};
-try{ var _cal_sh=JSON.parse(localStorage.getItem('ad_shifts')||'[]'); _cal_sh.forEach(function(s){jobDays[s.date]=true;}); }catch(e){}
+try{
+  var _cal_sh=JSON.parse(localStorage.getItem('ad_shifts')||'[]');
+  _cal_sh.forEach(function(s){jobDays[s.date]=true;});
+  // Also pre-seed shiftData from ad_shifts on first load
+  if(_cal_sh.length){
+    loadShifts(); // loads existing calendar shiftData first
+    // Only import tracker shifts that aren't already there
+    _cal_sh.forEach(function(s){
+      if(!s.date||!s.startIso||!s.endIso)return;
+      var uid='tr_'+s.id;
+      var already=Object.values(shiftData).some(function(arr){return arr.some(function(b){return b.id&&b.id.startsWith(uid);});});
+      if(!already){
+        var sdt=new Date(s.startIso);var edt=new Date(s.endIso);
+        var sm=sdt.getHours()*60+sdt.getMinutes();
+        var em=edt.getHours()*60+edt.getMinutes();
+        if(em<=sm)em+=1440;
+        // inline addShiftToDataTracked equivalent
+        (function(iso,startMin,endMin,label,tid){
+          var u='tr_'+tid;
+          function ab(di,s2,e2,tp,lb){if(!shiftData[di])shiftData[di]=[];s2=Math.max(0,s2);e2=Math.min(1440,e2);if(s2>=e2)return;shiftData[di].push({id:u+'_'+tp,label:lb,startMin:s2,endMin:e2,type:tp,_fromTracker:true});}
+          function as2(bi,fm,tm,tp,lb){if(fm<0){var pi=shiftPrevDay(bi);ab(pi,1440+fm,1440+Math.min(0,tm),tp,lb);if(tm>0)ab(bi,0,Math.min(1440,tm),tp,lb);}else if(fm>=1440){ab(shiftNextDay(bi),fm-1440,tm-1440,tp,lb);}else if(tm>1440){ab(bi,fm,1440,tp,lb);ab(shiftNextDay(bi),0,tm-1440,tp,lb);}else{ab(bi,fm,tm,tp,lb);}}
+          as2(iso,startMin-120,startMin,'prep','\ud83d\ude97 Prep');
+          as2(iso,startMin,endMin,'shift','\u2699 '+label);
+          as2(iso,endMin,endMin+90,'post','\ud83c\udfe0 Post');
+        })(s.date,sm,em,s.venue||'Shift',s.id);
+      }
+    });
+  }
+}catch(e){}
 var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -441,6 +469,18 @@ window.addEventListener('message', function(e){
       var iso = col.dataset.iso;
       col.classList.toggle('job-day-col', !!(iso && jobDays[iso]));
     });
+    // Also update header job-day class
+    document.querySelectorAll('.date-hd').forEach(function(hd, i){
+      var cols = document.querySelectorAll('.date-col');
+      if(cols[i]){
+        var iso2 = cols[i].dataset.iso;
+        hd.classList.toggle('job-day-hd', !!(iso2 && jobDays[iso2]));
+      }
+    });
+  }
+  // When shifts are updated from Shift Tracker, import them into calendar shiftData
+  if(e.data && e.data.type === 'shifts_updated' && e.data.shifts){
+    importShiftsFromTracker(e.data.shifts);
   }
 });
 
@@ -839,6 +879,63 @@ function clearAllShifts(){
   shiftData = {};
   saveShifts();
   renderMonth(curMonth);
+}
+
+// ════════════════════════════════════
+// IMPORT SHIFTS FROM SHIFT TRACKER
+// Auto-syncs ad_shifts into calendar shiftData on message
+// ════════════════════════════════════
+function importShiftsFromTracker(shifts){
+  if(!shifts||!shifts.length)return;
+  // Clear auto-imported shifts first (keep any manually parsed ones)
+  Object.keys(shiftData).forEach(function(iso){
+    shiftData[iso] = (shiftData[iso]||[]).filter(function(b){ return !b._fromTracker; });
+    if(!shiftData[iso].length) delete shiftData[iso];
+  });
+  // Add new ones
+  shifts.forEach(function(s){
+    if(!s.date||!s.startIso||!s.endIso)return;
+    var sdt=new Date(s.startIso);
+    var edt=new Date(s.endIso);
+    var startMin=sdt.getHours()*60+sdt.getMinutes();
+    var endMin=edt.getHours()*60+edt.getMinutes();
+    if(endMin<=startMin)endMin+=1440;
+    // Add to calendar shift data with prep/post
+    addShiftToDataTracked(s.date,startMin,endMin,s.venue||'Shift',s.id);
+    // Update job days
+    jobDays[s.date]=true;
+  });
+  saveShifts();
+  renderMonth(curMonth);
+}
+
+function addShiftToDataTracked(iso, startMin, endMin, label, trackerId){
+  var uid='tr_'+trackerId;
+  function addBlock(dateIso, sMin, eMin, type, lbl){
+    if(!shiftData[dateIso])shiftData[dateIso]=[];
+    sMin=Math.max(0,sMin); eMin=Math.min(1440,eMin);
+    if(sMin>=eMin)return;
+    shiftData[dateIso].push({id:uid+'_'+type,label:lbl,startMin:sMin,endMin:eMin,type:type,_fromTracker:true});
+  }
+  function addSeg(baseIso,fromMin,toMin,type,lbl){
+    if(fromMin<0){
+      var prevIso=shiftPrevDay(baseIso);
+      addBlock(prevIso,1440+fromMin,1440+Math.min(0,toMin),type,lbl);
+      if(toMin>0)addBlock(baseIso,0,Math.min(1440,toMin),type,lbl);
+    }else if(fromMin>=1440){
+      var nextIso=shiftNextDay(baseIso);
+      addBlock(nextIso,fromMin-1440,toMin-1440,type,lbl);
+    }else if(toMin>1440){
+      addBlock(baseIso,fromMin,1440,type,lbl);
+      var nextIso2=shiftNextDay(baseIso);
+      addBlock(nextIso2,0,toMin-1440,type,lbl);
+    }else{
+      addBlock(baseIso,fromMin,toMin,type,lbl);
+    }
+  }
+  addSeg(iso,startMin-120,startMin,'prep','🚗 Prep');
+  addSeg(iso,startMin,endMin,'shift','⚙ '+label);
+  addSeg(iso,endMin,endMin+90,'post','🏠 Post');
 }
 
 // ════════════════════════════════════

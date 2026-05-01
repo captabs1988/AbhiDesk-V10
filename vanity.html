@@ -84,6 +84,15 @@
   }
   .tick:hover{border-color:#34c759}.tick.on{background:#34c759;border-color:#34c759;color:#fff;}
 
+  /* Shift day badge in vanity cells */
+  .shift-badge{
+    display:inline-block;font-size:8px;font-weight:800;background:rgba(108,138,255,.18);
+    color:#6c8aff;border:1px solid rgba(108,138,255,.4);border-radius:4px;
+    padding:1px 5px;margin-top:2px;font-family:monospace;letter-spacing:.3px;
+  }
+  .day-cell.is-shift-day{background:#f0f3ff!important;}
+  .day-cell.is-shift-day .date-num{background:#6c8aff;color:#fff;}
+
   .sum-cell{display:flex;flex-direction:column;gap:3px;padding:8px;background:#f9f9fb;}
   .sum-ttl{font-size:9px;font-weight:850;color:#8e8e93;text-align:center;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;}
   .sum-m,.sum-w{display:flex;align-items:center;justify-content:space-between;gap:4px;line-height:1.15;}
@@ -130,6 +139,29 @@
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var DAY_HDRS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   var activeDashDate = new Date();
+
+  // Shift days from localStorage
+  var SHIFT_DAYS = {};
+  function loadShiftDays(){
+    try{
+      var sh=JSON.parse(localStorage.getItem('ad_shifts')||'[]');
+      SHIFT_DAYS={};
+      sh.forEach(function(s){ if(s.date) SHIFT_DAYS[s.date]=true; });
+    }catch(e){}
+  }
+  loadShiftDays();
+
+  // Listen for shift updates from parent
+  window.addEventListener('message',function(e){
+    if(e.data&&(e.data.type==='shifts_updated'||e.data.type==='job_days_updated')){
+      if(e.data.jobDates){
+        SHIFT_DAYS={};
+        e.data.jobDates.forEach(function(d){ SHIFT_DAYS[d]=true; });
+      }
+      // Re-render to reflect shift badges
+      render();
+    }
+  });
 
   function readData(){
     try{
@@ -228,12 +260,20 @@
           var dayData = ensure(wk).days[dk] || {m1:'',m2:''};
 
           var cell = document.createElement('div');
-          cell.className = 'day-cell' + (dk === today ? ' is-today' : '');
+          cell.className = 'day-cell' + (dk === today ? ' is-today' : '') + (SHIFT_DAYS[dk] ? ' is-shift-day' : '');
 
           var num = document.createElement('div');
           num.className = 'date-num';
           num.textContent = d.getDate();
           cell.appendChild(num);
+
+          // Shift badge
+          if(SHIFT_DAYS[dk]){
+            var badge=document.createElement('div');
+            badge.className='shift-badge';
+            badge.textContent='💼 Work';
+            cell.appendChild(badge);
+          }
 
           var mw = document.createElement('div'); mw.className = 'muscle-wrap';
           [1,2].forEach(function(slot){

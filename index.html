@@ -47,17 +47,12 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 .theme-toggle:hover{border-color:var(--accent);}
 .tt-icon{font-size:14px;}
 .tt-lbl{font-size:10px;font-weight:500;letter-spacing:.5px;}
-.tab-bar{display:flex;align-items:stretch;background:var(--surface);border-bottom:1px solid var(--border);height:48px;flex-shrink:0;padding:0 8px;gap:2px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
-.tab-bar::-webkit-scrollbar{display:block;height:4px;}
-.tab-bar::-webkit-scrollbar-track{background:transparent;}
-.tab-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
-.tab-bar::-webkit-scrollbar-thumb:hover{background:var(--accent);}
+.tab-bar{display:flex;align-items:stretch;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 8px;gap:2px;flex-wrap:wrap;min-height:48px;overflow:visible;}
 .logo{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;padding:0 12px 0 6px;border-right:1px solid var(--border);margin-right:4px;flex-shrink:0;user-select:none;}
 .logo span{color:var(--accent2);}
-.tab{display:flex;align-items:center;gap:6px;padding:0 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border:none;border-bottom:2px solid transparent;border-top:none;border-left:none;border-right:none;white-space:nowrap;flex-shrink:0;background:none;font-family:'Syne',sans-serif;transition:color .15s,border-color .15s;}
+.tab{display:flex;align-items:center;gap:6px;padding:0 13px;height:36px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border:none;border-bottom:2px solid transparent;border-top:none;border-left:none;border-right:none;white-space:nowrap;flex-shrink:0;background:none;font-family:'Syne',sans-serif;transition:color .15s,border-color .15s;}
 .tab:hover{color:var(--text);}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-.tab.drag-over{border-left:2px solid var(--accent);}
 .panel-area{flex:1;overflow:hidden;position:relative;}
 .panel{position:absolute;inset:0;display:none;}
 .panel.active{display:block;}
@@ -210,20 +205,20 @@ table.tbl input[type=time]:focus{border-bottom-color:var(--accent);background:rg
 <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
 <span class="tt-icon" id="ttIcon">☀️</span><span class="tt-lbl" id="ttLbl">LIGHT</span>
 </button>
-<button class="tab active" draggable="true" id="tab-tracker" onclick="switchTab('tracker')" ondblclick="renameTab('tracker')"><span>📊</span><span id="lbl-tracker">2026 Daily Log</span></button>
-<button class="tab" draggable="true" id="tab-pledge" onclick="switchTab('pledge')" ondblclick="renameTab('pledge')"><span>🔥</span><span id="lbl-pledge">Pledge</span></button>
-<button class="tab" draggable="true" id="tab-sheet" onclick="switchTab('sheet')" ondblclick="renameTab('sheet')"><span>📋</span><span id="lbl-sheet">Checklist Sheet</span></button>
-<button class="tab" draggable="true" id="tab-dayflow" onclick="switchTab('dayflow')" ondblclick="renameTab('dayflow')"><span>📅</span><span id="lbl-dayflow">DayFlow</span></button>
-<button class="tab" draggable="true" id="tab-abhiplanner" onclick="switchTab('abhiplanner')" ondblclick="renameTab('abhiplanner')"><span>🗓️</span><span id="lbl-abhiplanner">Abhi Planner</span></button>
-<button class="tab" draggable="true" id="tab-codetrack" onclick="switchTab('codetrack')" ondblclick="renameTab('codetrack')"><span>💻</span><span id="lbl-codetrack">Code Tracker</span></button>
-<button class="tab" draggable="true" id="tab-breathe" onclick="switchTab('breathe')" ondblclick="renameTab('breathe')"><span>🫁</span><span id="lbl-breathe">Breathe</span></button>
-<button class="tab" draggable="true" id="tab-znf" onclick="switchTab('znf')" ondblclick="renameTab('znf')"><span>✈</span><span id="lbl-znf">Zero Noise Flight</span></button>
-<button class="tab" draggable="true" id="tab-vanity" onclick="switchTab('vanity')" ondblclick="renameTab('vanity')"><span>💪</span><span id="lbl-vanity">Vanity</span></button>
-<button class="tab" draggable="true" id="tab-fitlog" onclick="switchTab('fitlog')" ondblclick="renameTab('fitlog')"><span>🏃</span><span id="lbl-fitlog">Fit Log</span></button>
-<button class="tab" draggable="true" id="tab-calendar" onclick="switchTab('calendar')" ondblclick="renameTab('calendar')"><span>📅</span><span id="lbl-calendar">Calendar</span></button>
-<button class="tab" draggable="true" id="tab-shifts" onclick="switchTab('shifts')" ondblclick="renameTab('shifts')"><span>💼</span><span id="lbl-shifts">Shift Tracker</span></button>
-<button class="tab" draggable="true" id="tab-settings" onclick="switchTab('settings')" ondblclick="renameTab('settings')"><span>⚙️</span><span id="lbl-settings">Settings</span></button>
-<div id="abhisyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0;padding-right:6px;">
+<button class="tab active" id="tab-tracker" onclick="switchTab('tracker')" ondblclick="renameTab('tracker')"><span>📊</span><span id="lbl-tracker">2026 Daily Log</span></button>
+<button class="tab" id="tab-pledge" onclick="switchTab('pledge')" ondblclick="renameTab('pledge')"><span>🔥</span><span id="lbl-pledge">Pledge</span></button>
+<button class="tab" id="tab-sheet" onclick="switchTab('sheet')" ondblclick="renameTab('sheet')"><span>📋</span><span id="lbl-sheet">Checklist Sheet</span></button>
+<button class="tab" id="tab-dayflow" onclick="switchTab('dayflow')" ondblclick="renameTab('dayflow')"><span>📅</span><span id="lbl-dayflow">DayFlow</span></button>
+<button class="tab" id="tab-abhiplanner" onclick="switchTab('abhiplanner')" ondblclick="renameTab('abhiplanner')"><span>🗓️</span><span id="lbl-abhiplanner">Abhi Planner</span></button>
+<button class="tab" id="tab-codetrack" onclick="switchTab('codetrack')" ondblclick="renameTab('codetrack')"><span>💻</span><span id="lbl-codetrack">Code Tracker</span></button>
+<button class="tab" id="tab-breathe" onclick="switchTab('breathe')" ondblclick="renameTab('breathe')"><span>🫁</span><span id="lbl-breathe">Breathe</span></button>
+<button class="tab" id="tab-znf" onclick="switchTab('znf')" ondblclick="renameTab('znf')"><span>✈</span><span id="lbl-znf">Zero Noise Flight</span></button>
+<button class="tab" id="tab-vanity" onclick="switchTab('vanity')" ondblclick="renameTab('vanity')"><span>💪</span><span id="lbl-vanity">Vanity</span></button>
+<button class="tab" id="tab-fitlog" onclick="switchTab('fitlog')" ondblclick="renameTab('fitlog')"><span>🏃</span><span id="lbl-fitlog">Fit Log</span></button>
+<button class="tab" id="tab-calendar" onclick="switchTab('calendar')" ondblclick="renameTab('calendar')"><span>📅</span><span id="lbl-calendar">Calendar</span></button>
+<button class="tab" id="tab-shifts" onclick="switchTab('shifts')" ondblclick="renameTab('shifts')"><span>💼</span><span id="lbl-shifts">Shift Tracker</span></button>
+<button class="tab" id="tab-settings" onclick="switchTab('settings')" ondblclick="renameTab('settings')"><span>⚙️</span><span id="lbl-settings">Settings</span></button>
+<div id="abhisyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0;padding-right:6px;height:36px;">
   <span id="abhisyncStatus" style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;"></span>
   <!-- Folder indicator -->
   <button class="abhisync-folder" id="abhiFolderBtn" onclick="pickSyncFolder()" title="Choose a folder — all backups and restores will use this folder automatically">
@@ -1730,25 +1725,170 @@ window._fitlogRender=function(){buildFitLog();flUpdateStats();setTimeout(functio
 // switchTab('vanity') triggers iframe load via ISRC/loaded pattern.
 
 // ════════════════════════════════════════════════════════
-// SETTINGS PANEL (Request 1)
+// SETTINGS PANEL
 // ════════════════════════════════════════════════════════
 (function(){
-var PM={tracker:{icon:'\ud83d\udcca',def:'2026 Daily Log'},pledge:{icon:'\ud83d\udd25',def:'Pledge'},sheet:{icon:'\ud83d\udccb',def:'Checklist Sheet'},dayflow:{icon:'\ud83d\udcc5',def:'DayFlow'},abhiplanner:{icon:'\ud83d\uddd3\ufe0f',def:'Abhi Planner'},codetrack:{icon:'\ud83d\udcbb',def:'Code Tracker'},breathe:{icon:'\ud83e\udd2b',def:'Breathe'},znf:{icon:'\u2708',def:'Zero Noise Flight'},vanity:{icon:'\ud83d\udcaa',def:'Vanity'},fitlog:{icon:'\ud83c\udfc3',def:'Fit Log'},calendar:{icon:'\ud83d\udcc5',def:'Calendar'},shifts:{icon:'\ud83d\udcbc',def:'Shift Tracker'}};
-function stGetOrder(){try{var o=JSON.parse(localStorage.getItem('ad_panel_order')||'null');if(o&&o.length)return o;}catch(e){}return ['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts'];}
+var PM={tracker:{icon:'📊',def:'2026 Daily Log'},pledge:{icon:'🔥',def:'Pledge'},sheet:{icon:'📋',def:'Checklist Sheet'},dayflow:{icon:'📅',def:'DayFlow'},abhiplanner:{icon:'🗓️',def:'Abhi Planner'},codetrack:{icon:'💻',def:'Code Tracker'},breathe:{icon:'🫁',def:'Breathe'},znf:{icon:'✈',def:'Zero Noise Flight'},vanity:{icon:'💪',def:'Vanity'},fitlog:{icon:'🏃',def:'Fit Log'},calendar:{icon:'📅',def:'Calendar'},shifts:{icon:'💼',def:'Shift Tracker'}};
+var DEFAULT_ORDER=['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts'];
+function stGetOrder(){try{var o=JSON.parse(localStorage.getItem('ad_panel_order')||'null');if(o&&o.length)return o;}catch(e){}return DEFAULT_ORDER.slice();}
 function stSaveOrder(order){localStorage.setItem('ad_panel_order',JSON.stringify(order));}
-function buildSettings(){var panel=document.getElementById('panel-settings');panel.innerHTML='<div class="st-toolbar"><h2>\u2699\ufe0f // Settings</h2></div><div class="st-wrap"><div class="st-inner" id="st-inner"></div></div>';stRender();}
+
+function buildSettings(){
+  var panel=document.getElementById('panel-settings');
+  panel.innerHTML='<div class="st-toolbar"><h2>⚙️ // Settings</h2></div><div class="st-wrap"><div class="st-inner" id="st-inner"></div></div>';
+  stRender();
+}
+
 function stRender(){
   var inner=document.getElementById('st-inner');if(!inner)return;
-  var order=stGetOrder();var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
-  var html='<div class="st-section"><div class="st-section-title">\ud83d\udd32 Panel Visibility &amp; Order</div><div class="st-hint">\u283f Drag rows to reorder &middot; Toggle to show/hide &middot; \u270e Rename tab label</div><div class="st-panel-list" id="st-panel-list">';
-  order.forEach(function(tid){var meta=PM[tid]||{icon:'\ud83d\udcc4',def:tid};var lbl=localStorage.getItem('adlbl_'+tid)||meta.def;var vis=!hl.includes(tid);html+='<div class="st-panel-row" draggable="true" data-tid="'+tid+'"><span class="st-panel-drag">\u283f</span><span class="st-panel-name">'+meta.icon+' <span id="st-lbl-'+tid+'">'+lbl+'</span></span><button class="st-panel-rename" onclick="stRename(\''+tid+'\')"><span>\u270e</span> Rename</button><label class="st-panel-toggle"><input type="checkbox" id="st-vis-'+tid+'"'+(vis?' checked':'')+" onchange=\"stToggleVis('"+tid+"',this.checked)\"><span class=\"st-toggle-slider\"></span></label></div>";});
-  html+='</div></div><div class="st-section"><div class="st-section-title">\ud83c\udff7\ufe0f Panel Short Names <span style="font-size:9px;font-weight:400;color:var(--muted)">(AI Reference)</span></div><div class="st-hint" style="margin-bottom:8px">These short names never change \u2014 use them when talking to AI so it always knows which panel you mean, regardless of what you rename the tab.</div><table style="width:100%;border-collapse:collapse;font-family:\'JetBrains Mono\',monospace;font-size:11px;"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border);"><th style="padding:4px 8px;font-weight:600">Short Name</th><th style="padding:4px 8px;font-weight:600">Current Display Name</th><th style="padding:4px 8px;font-weight:600">Panel ID</th></tr></thead><tbody id="st-shortnames-body"></tbody></table></div><div class="st-section"><div class="st-section-title">\ud83d\udd04 Sync</div><button class="st-btn" onclick="AbhiSync.run()">\ud83d\udd04 Sync All Data Now</button><div class="st-hint" style="margin-top:6px">Exports all AbhiDesk data to your sync folder + Google Sheets</div><div style="margin-top:10px"><button class="st-btn" onclick="importFromJsonFiles()">\ud83d\udcc2 Import from JSON Files</button><div class="st-hint" style="margin-top:6px">Pick your saved JSON backup files to restore data into AbhiDesk</div></div><div style="margin-top:10px"><button class="st-btn" onclick="restoreFromSheet()">\u2601\ufe0f Restore from Google Sheets</button><div class="st-hint" style="margin-top:6px">Pull data back from your Google Sheets backend</div></div></div><div class="st-section"><div class="st-section-title">\u26a0\ufe0f Danger Zone</div><button class="st-btn danger" onclick="restoreAllPanels()">\u21ba Restore All Hidden Panels</button></div>';
-  inner.innerHTML=html;stWireDrag();stRenderShortNames();
+  var order=stGetOrder();
+  var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
+  var folderName=localStorage.getItem('_abhiSyncFolderName')||'';
+
+  var html='';
+
+  // ── PANEL ORDER & VISIBILITY ──
+  html+='<div class="st-section">';
+  html+='<div class="st-section-title">🔢 Panel Order &amp; Visibility</div>';
+  html+='<div class="st-hint">⠿ Drag rows to reorder · Toggle to show/hide · ✎ Rename tab label</div>';
+  html+='<div class="st-panel-list" id="st-panel-list">';
+  order.forEach(function(tid){
+    var meta=PM[tid]||{icon:'📄',def:tid};
+    var lbl=localStorage.getItem('adlbl_'+tid)||meta.def;
+    var vis=!hl.includes(tid);
+    html+='<div class="st-panel-row" draggable="true" data-tid="'+tid+'">';
+    html+='<span class="st-panel-drag">⠿</span>';
+    html+='<span class="st-panel-name">'+meta.icon+' <span id="st-lbl-'+tid+'">'+lbl+'</span></span>';
+    html+='<button class="st-panel-rename" onclick="stRename(\''+tid+'\')">✎ Rename</button>';
+    html+='<label class="st-panel-toggle"><input type="checkbox" id="st-vis-'+tid+'"'+(vis?' checked':'')+" onchange=\"stToggleVis('"+tid+"',this.checked)\"><span class=\"st-toggle-slider\"></span></label>";
+    html+='</div>';
+  });
+  html+='</div>';
+  // Save Order button
+  html+='<div style="margin-top:10px;display:flex;gap:8px;align-items:center;">';
+  html+='<button class="st-btn" id="st-save-order-btn" onclick="stApplyAndSaveOrder()" style="background:rgba(108,138,255,.12);border-color:rgba(108,138,255,.4);color:var(--accent);">💾 Save Tab Order</button>';
+  html+='<span id="st-order-saved-msg" style="font-size:10px;color:var(--green);font-family:\'JetBrains Mono\',monospace;opacity:0;transition:opacity .3s;"></span>';
+  html+='</div>';
+  html+='</div>';
+
+  // ── BACKUP FOLDER ──
+  html+='<div class="st-section">';
+  html+='<div class="st-section-title">📂 Backup Folder</div>';
+  html+='<div class="st-hint" style="margin-bottom:8px">Choose once — all backups will always save here automatically. You only get asked to pick a folder when you change it here.</div>';
+  html+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">';
+  html+='<button class="st-btn" onclick="pickSyncFolder()" style="background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:#a78bfa;">📂 '+(folderName?'Change Folder: '+folderName:'Pick Backup Folder')+'</button>';
+  if(folderName){
+    html+='<span style="font-size:10px;color:var(--green);font-family:\'JetBrains Mono\',monospace;">✓ '+folderName+' selected</span>';
+  }
+  html+='</div>';
+  html+='<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">';
+  html+='<button class="st-btn" onclick="quickBackup()">⬇ Take Backup Now</button>';
+  html+='<button class="st-btn" onclick="quickRestore()">⬆ Load a Backup</button>';
+  html+='</div>';
+  html+='</div>';
+
+  // ── BACKUP HELP ──
+  html+='<div class="st-section">';
+  html+='<div class="st-section-title">❓ How Backups Work (Plain English)</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:8px;font-size:11px;line-height:1.7;">';
+  html+='<div style="background:rgba(108,138,255,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--accent);">';
+  html+='<b>📦 What is a backup?</b><br>It\'s a single file (like a save file in a game) that stores <em>everything</em> in AbhiDesk — your shifts, fitness log, planner blocks, settings, everything. File is named like:<br><code style="font-size:10px;color:var(--accent2);">AbhiDesk Backup — 14:30 on 01/05/2026.json</code>';
+  html+='</div>';
+  html+='<div style="background:rgba(52,211,153,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--green);">';
+  html+='<b>💾 How to take a backup</b><br>1. First, pick a folder using "Pick Backup Folder" above (only needed once).<br>2. Click "⬇ Take Backup Now" or the "⬇ Backup" button in the top bar.<br>3. Done! It auto-saves to your chosen folder every time.';
+  html+='</div>';
+  html+='<div style="background:rgba(245,158,11,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--gold);">';
+  html+='<b>🔄 How to restore a backup</b><br>1. Click "⬆ Load a Backup" or the "⬆ Restore" button in the top bar.<br>2. If a folder is set, it shows you a list of your backups — pick one.<br>3. If no folder, it opens a file picker — find your .json backup file.<br>4. Page reloads with all your data restored.';
+  html+='</div>';
+  html+='<div style="background:rgba(167,139,250,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--accent2);">';
+  html+='<b>📱 Using on another device?</b><br>Take a backup on device 1 → copy the .json file to device 2 → use "⬆ Restore" to load it. Or use the ☁ Load button to pull from Google Sheets if you have that set up.';
+  html+='</div>';
+  html+='</div>';
+  html+='</div>';
+
+  // ── SHORT NAMES ──
+  html+='<div class="st-section">';
+  html+='<div class="st-section-title">🏷️ Panel Short Names <span style="font-size:9px;font-weight:400;color:var(--muted)">(AI Reference)</span></div>';
+  html+='<div class="st-hint" style="margin-bottom:8px">These short names never change — use them when talking to AI so it always knows which panel you mean.</div>';
+  html+='<table style="width:100%;border-collapse:collapse;font-family:\'JetBrains Mono\',monospace;font-size:11px;"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border);"><th style="padding:4px 8px;">Short Name</th><th style="padding:4px 8px;">Display Name</th><th style="padding:4px 8px;font-size:9px;">Panel ID</th></tr></thead><tbody id="st-shortnames-body"></tbody></table>';
+  html+='</div>';
+
+  // ── SYNC ──
+  html+='<div class="st-section">';
+  html+='<div class="st-section-title">🔄 Sync</div>';
+  html+='<button class="st-btn" onclick="AbhiSync.run()">🔄 Sync All Data (Files + Sheets)</button>';
+  html+='<div class="st-hint" style="margin-top:6px">Exports all data to your sync folder + Google Sheets</div>';
+  html+='<div style="margin-top:10px"><button class="st-btn" onclick="importFromJsonFiles()">📂 Import from JSON Files</button><div class="st-hint" style="margin-top:6px">Pick saved JSON backup files to restore specific data</div></div>';
+  html+='<div style="margin-top:10px"><button class="st-btn" onclick="restoreFromSheet()">☁️ Restore from Google Sheets</button><div class="st-hint" style="margin-top:6px">Pull data back from your Google Sheets cloud backup</div></div>';
+  html+='</div>';
+
+  // ── DANGER ZONE ──
+  html+='<div class="st-section"><div class="st-section-title">⚠️ Danger Zone</div><button class="st-btn danger" onclick="restoreAllPanels()">↺ Restore All Hidden Panels</button></div>';
+
+  inner.innerHTML=html;
+  stWireDrag();
+  stRenderShortNames();
 }
-window.stRename=function(tid){var sp=document.getElementById('lbl-'+tid);var st2=document.getElementById('st-lbl-'+tid);if(!sp)return;var orig=sp.textContent;var nv=prompt('Rename "'+orig+'" to:',orig);if(!nv||!nv.trim())return;nv=nv.trim();sp.textContent=nv;if(st2)st2.textContent=nv;localStorage.setItem('adlbl_'+tid,nv);};
-window.stToggleVis=function(tid,visible){var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');if(visible){hl=hl.filter(function(x){return x!==tid;});}else{if(!hl.includes(tid))hl.push(tid);}localStorage.setItem('ad_hidden',JSON.stringify(hl));_hidden=hl;if(visible){var te=document.getElementById('tab-'+tid);if(te)te.style.cssText='';var pid=PANEL[tid]||('panel-'+tid);var pe=document.getElementById(pid);if(pe)pe.style.cssText='';}else{_applyHidden();}};
-var SHORT_ICONS={tracker:'\ud83d\udcca',pledge:'\ud83d\udd25',sheet:'\ud83d\udccb',dayflow:'\ud83d\udcc5',abhiplanner:'\ud83d\uddd3\ufe0f',codetrack:'\ud83d\udcbb',breathe:'\ud83e\udd2b',znf:'\u2708',vanity:'\ud83d\udcaa',fitlog:'\ud83c\udfc3',calendar:'\ud83d\udcc5',settings:'\u2699\ufe0f'};
-function stRenderShortNames(){var tbody=document.getElementById('st-shortnames-body');if(!tbody)return;var rows='';var order=stGetOrder().concat(['settings']);order.forEach(function(tid){var icon=SHORT_ICONS[tid]||'\ud83d\udcc4';var displayName=localStorage.getItem('adlbl_'+tid)||(PM[tid]?PM[tid].def:tid);rows+='<tr style="border-bottom:1px solid rgba(128,128,128,.1);"><td style="padding:5px 8px;"><code style="background:rgba(108,138,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:11px;">'+tid+'</code></td><td style="padding:5px 8px;color:var(--text);">'+icon+' '+displayName+'</td><td style="padding:5px 8px;color:var(--muted);font-size:10px;">panel-'+tid+'</td></tr>';});tbody.innerHTML=rows;}
+
+// Apply order to tab bar AND save to localStorage
+window.stApplyAndSaveOrder=function(){
+  var list=document.getElementById('st-panel-list');if(!list)return;
+  var order=[].slice.call(list.querySelectorAll('.st-panel-row')).map(function(r){return r.dataset.tid;});
+  stSaveOrder(order);
+  // Reorder tab bar DOM
+  var tabBar=document.getElementById('tabBar');
+  var syncWrap=document.getElementById('abhisyncWrap');
+  if(tabBar&&syncWrap){
+    order.forEach(function(tid){
+      var tab=document.getElementById('tab-'+tid);
+      if(tab)tabBar.insertBefore(tab,syncWrap);
+    });
+  }
+  // Show saved message
+  var msg=document.getElementById('st-order-saved-msg');
+  if(msg){msg.textContent='✓ Saved! Tab bar updated.';msg.style.opacity='1';setTimeout(function(){msg.style.opacity='0';},2500);}
+};
+
+window.stRename=function(tid){
+  var sp=document.getElementById('lbl-'+tid);
+  var st2=document.getElementById('st-lbl-'+tid);
+  if(!sp)return;
+  var orig=sp.textContent;
+  var nv=prompt('Rename "'+orig+'" to:',orig);
+  if(!nv||!nv.trim())return;
+  nv=nv.trim();
+  sp.textContent=nv;
+  if(st2)st2.textContent=nv;
+  localStorage.setItem('adlbl_'+tid,nv);
+};
+
+window.stToggleVis=function(tid,visible){
+  var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
+  if(visible){hl=hl.filter(function(x){return x!==tid;});}
+  else{if(!hl.includes(tid))hl.push(tid);}
+  localStorage.setItem('ad_hidden',JSON.stringify(hl));
+  _hidden=hl;
+  if(visible){
+    var te=document.getElementById('tab-'+tid);if(te)te.style.cssText='';
+    var pid=PANEL[tid]||('panel-'+tid);
+    var pe=document.getElementById(pid);if(pe)pe.style.cssText='';
+  }else{_applyHidden();}
+};
+
+var SHORT_ICONS={tracker:'📊',pledge:'🔥',sheet:'📋',dayflow:'📅',abhiplanner:'🗓️',codetrack:'💻',breathe:'🫁',znf:'✈',vanity:'💪',fitlog:'🏃',calendar:'📅',settings:'⚙️'};
+
+function stRenderShortNames(){
+  var tbody=document.getElementById('st-shortnames-body');if(!tbody)return;
+  var rows='';
+  var order=stGetOrder().concat(['settings']);
+  order.forEach(function(tid){
+    var icon=SHORT_ICONS[tid]||'📄';
+    var displayName=localStorage.getItem('adlbl_'+tid)||(PM[tid]?PM[tid].def:tid);
+    rows+='<tr style="border-bottom:1px solid rgba(128,128,128,.1);"><td style="padding:5px 8px;"><code style="background:rgba(108,138,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:11px;">'+tid+'</code></td><td style="padding:5px 8px;color:var(--text);">'+icon+' '+displayName+'</td><td style="padding:5px 8px;color:var(--muted);font-size:10px;">panel-'+tid+'</td></tr>';
+  });
+  tbody.innerHTML=rows;
+}
+
 function stWireDrag(){
   var list=document.getElementById('st-panel-list');if(!list)return;
   var dragging=null;
@@ -1762,7 +1902,7 @@ function stWireDrag(){
     row.addEventListener('dragend',function(){
       row.style.opacity='';
       dragging=null;
-      stSaveCurrentOrder();
+      // Do NOT auto-apply — user must click "Save Tab Order"
     });
     row.addEventListener('dragover',function(e){
       e.preventDefault();
@@ -1774,24 +1914,15 @@ function stWireDrag(){
         list.insertBefore(dragging,fromIdx<toIdx?row.nextSibling:row);
       }
     });
-    row.addEventListener('drop',function(e){ e.preventDefault(); });
+    row.addEventListener('drop',function(e){e.preventDefault();});
   });
 }
 
-function stSaveCurrentOrder(){
-  var list=document.getElementById('st-panel-list');if(!list)return;
-  var order=[].slice.call(list.querySelectorAll('.st-panel-row')).map(function(r){return r.dataset.tid;});
-  stSaveOrder(order);
-  // Immediately reorder tab bar DOM to match
-  var tabBar=document.getElementById('tabBar');
-  var syncWrap=document.getElementById('abhisyncWrap');
-  if(!tabBar||!syncWrap)return;
-  order.forEach(function(tid){
-    var tab=document.getElementById('tab-'+tid);
-    if(tab)tabBar.insertBefore(tab,syncWrap);
-  });
-}
-window._settingsRender=function(){var panel=document.getElementById('panel-settings');if(!panel.querySelector('.st-toolbar'))buildSettings();else stRender();};
+window._settingsRender=function(){
+  var panel=document.getElementById('panel-settings');
+  if(!panel.querySelector('.st-toolbar'))buildSettings();
+  else stRender();
+};
 })();
 
 
@@ -1972,7 +2103,8 @@ async function quickBackup() {
   btn.disabled = true;
 
   try {
-    var timestamp = new Date().toISOString();
+    var now = new Date();
+    var timestamp = now.toISOString();
     var master = { _syncedAt: timestamp, _source: 'AbhiDesk', _version: '3.0' };
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
@@ -1981,8 +2113,13 @@ async function quickBackup() {
       try { master[k] = JSON.parse(v); } catch(e) { master[k] = v; }
     }
 
-    var dateStr = new Date().toISOString().slice(0,10);
-    var fname = 'abhidesk_backup_' + dateStr + '.json';
+    // Human-readable filename: "AbhiDesk Backup — HH:MM on DD/MM/YYYY.json"
+    var hh=String(now.getHours()).padStart(2,'0');
+    var mm=String(now.getMinutes()).padStart(2,'0');
+    var dd=String(now.getDate()).padStart(2,'0');
+    var mo=String(now.getMonth()+1).padStart(2,'0');
+    var yyyy=now.getFullYear();
+    var fname='AbhiDesk Backup — '+hh+':'+mm+' on '+dd+'-'+mo+'-'+yyyy+'.json';
     var json = JSON.stringify(master, null, 2);
 
     var folder = await _getSyncFolder();
@@ -2040,7 +2177,7 @@ async function quickRestore() {
     try{
       var files = [];
       for await(var entry of folder.values()){
-        if(entry.kind==='file' && entry.name.startsWith('abhidesk_backup') && entry.name.endsWith('.json')){
+        if(entry.kind==='file' && (entry.name.startsWith('AbhiDesk Backup') || entry.name.startsWith('abhidesk_backup')) && entry.name.endsWith('.json')){
           files.push(entry);
         }
       }
@@ -2172,12 +2309,23 @@ window.addEventListener('message', function(e) {
     if (flBody) flBuildTable();
     // Notify calendar and abhi planner iframes about job days
     var jobDates = e.data.jobDates || [];
+    var allShifts = e.data.shifts || [];
     ['fr-calendar','fr-abhiplanner','fr-dayflow'].forEach(function(id) {
       var fr = document.getElementById(id);
       if (fr && fr.contentWindow) {
         try { fr.contentWindow.postMessage({ type: 'job_days_updated', jobDates: jobDates }, '*'); } catch(ex) {}
       }
     });
+    // Send full shifts to dayflow for auto-block placement
+    var frDf = document.getElementById('fr-dayflow');
+    if (frDf && frDf.contentWindow) {
+      try { frDf.contentWindow.postMessage({ type: 'shifts_auto_place', shifts: allShifts }, '*'); } catch(ex) {}
+    }
+    // Send full shifts to vanity for shift day display
+    var frVan = document.getElementById('fr-vanity');
+    if (frVan && frVan.contentWindow) {
+      try { frVan.contentWindow.postMessage({ type: 'shifts_updated', shifts: allShifts, jobDates: jobDates }, '*'); } catch(ex) {}
+    }
   }
 });
 </script>

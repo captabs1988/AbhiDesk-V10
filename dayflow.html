@@ -201,6 +201,10 @@ window.addEventListener('message',function(e){
     try{localStorage.setItem('_df_jobDates',JSON.stringify(jd));}catch(_){}
     updateWorkBadge();
   }
+  // Auto-place shift blocks when a shift is added in the Shift Tracker
+  if(e.data&&e.data.type==='shifts_auto_place'&&e.data.shifts){
+    autoPlaceShiftBlocks(e.data.shifts);
+  }
 });
 </script>
 </head>
@@ -435,6 +439,62 @@ function updateWorkBadge(){
 }
 // Seed from ad_shifts on load
 (function(){try{var sh=JSON.parse(localStorage.getItem('ad_shifts')||'[]');var jd={};sh.forEach(function(s){jd[s.date]=true;});localStorage.setItem('_df_jobDates',JSON.stringify(jd));updateWorkBadge();}catch(e){}})();
+
+// ── Auto-place shift blocks from Shift Tracker ──
+function autoPlaceShiftBlocks(shifts){
+  if(!shifts||!shifts.length)return;
+  var todayKey=getTodayKey();
+
+  shifts.forEach(function(shift){
+    if(!shift.date||!shift.startIso||!shift.endIso)return;
+
+    // Compute renderMin relative to today
+    var todayParts=todayKey.split('-').map(Number);
+    var shiftParts=shift.date.split('-').map(Number);
+    var todayD=new Date(todayParts[0],todayParts[1]-1,todayParts[2]);
+    var shiftD=new Date(shiftParts[0],shiftParts[1]-1,shiftParts[2]);
+    var dayDiff=Math.round((shiftD-todayD)/86400000);
+    var dayOffMin=dayDiff*1440;
+
+    // Parse shift start/end in local time
+    var sdt=new Date(shift.startIso);
+    var edt=new Date(shift.endIso);
+    var startMin=dayOffMin+sdt.getHours()*60+sdt.getMinutes();
+    var endMin=dayOffMin+edt.getHours()*60+edt.getMinutes();
+    if(endMin<=startMin)endMin+=1440; // overnight shift
+    var shiftDurMin=endMin-startMin;
+
+    // Check if a shift block already exists at this time to avoid duplicates
+    var shiftId='auto_shift_'+shift.id;
+    var exists=placed.some(function(pb){return pb.id===shiftId;});
+    if(exists)return;
+
+    // Colors
+    var shiftColor={r:108,g:138,b:255,a:35};  // blue
+    var preColor={r:245,g:158,b:11,a:30};      // gold/amber
+    var postColor={r:167,g:139,b:250,a:25};    // purple
+
+    // Pre-shift block: 2 hours (120 min) before shift
+    var preStart=startMin-120;
+    if(preStart>=0){
+      var preId='auto_pre_'+shift.id;
+      var preExists=placed.some(function(pb){return pb.id===preId;});
+      if(!preExists) placeBlock('auto_pre','\ud83d\ude97 Pre-Shift Prep',preColor,preStart,120,preId,Date.now(),shift.date);
+    }
+
+    // Shift block itself
+    placeBlock('auto_shift','\ud83d\udcbc Shift: '+(shift.venue||'Work'),shiftColor,startMin,shiftDurMin,shiftId,Date.now(),shift.date);
+
+    // Post-shift block: 1.5 hours (90 min) after shift
+    var postId='auto_post_'+shift.id;
+    var postExists=placed.some(function(pb){return pb.id===postId;});
+    if(!postExists) placeBlock('auto_post','\ud83c\udfe0 Post-Shift Wind-Down',postColor,endMin,90,postId,Date.now(),shift.date);
+  });
+
+  saveState();
+  updateNotepad();
+  updateCountdownGuides();
+}
 
 function getTodayKey() { // get YYYY-MM-DD for today in selected timezone
   return new Intl.DateTimeFormat('en-CA',{timeZone:getTz(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
