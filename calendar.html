@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>AbhiDesk — Calendar 2026</title>
+<style>
+:root{
+  --bg:#0d0f18;--sf:#12141f;--sf2:#1a1d2e;--bd:#1e2235;
+  --ac:#6c8aff;--ac2:#a78bfa;--gn:#34d399;--rd:#ef4444;--gd:#f59e0b;
+  --tx:#e2e8f0;--mu:#64748b;
+  --prep:#f59e0b;--shift:#6c8aff;--post:#a78bfa;--rain:#38bdf8;--overlap:#ef4444;
+}
+[data-theme="light"]{
+  --bg:#f0f2f8;--sf:#fff;--sf2:#eef1fb;--bd:#d1d8e8;
+  --ac:#3a5fd9;--ac2:#7c3aed;--gn:#059669;--rd:#dc2626;--gd:#d97706;
+  --tx:#1a2040;--mu:#6b7494;
+  --prep:#d97706;--shift:#3a5fd9;--post:#7c3aed;--rain:#0284c7;--overlap:#dc2626;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);height:100vh;overflow:hidden;display:flex;flex-direction:column;font-size:13px;}
+
+/* ── TOOLBAR ── */
+#tb{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--sf);border-bottom:1px solid var(--bd);flex-shrink:0;min-height:40px;flex-wrap:wrap;}
+#tb h1{font-size:11px;font-weight:700;color:var(--ac);font-family:monospace;white-space:nowrap;}
+.btn{padding:3px 8px;border-radius:5px;font-size:10px;border:1px solid var(--bd);background:transparent;color:var(--tx);cursor:pointer;white-space:nowrap;font-family:inherit;transition:border-color .12s,color .12s;}
+.btn:hover{border-color:var(--ac);color:var(--ac);}
+.btn.on{background:var(--ac);color:#fff;border-color:var(--ac);}
+.btn.danger{border-color:var(--rd);color:var(--rd);}
+.sp{width:1px;height:18px;background:var(--bd);flex-shrink:0;}
+.toggle-rain{border-color:var(--rain);color:var(--rain);}
+.toggle-rain.on{background:var(--rain);color:#fff;border-color:var(--rain);}
+
+/* ── MAIN AREA ── */
+#main{display:flex;flex:1;overflow:hidden;}
+
+/* ── TIMELINE PANEL ── */
+#timeline-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+/* ── TIMELINE LAYOUT ──
+   Structure: left y-axis (fixed) | right scroll area (both axes)
+   Inside scroll: sticky date-header row on top, then grid rows below.
+   This way dates always scroll in sync with grid — no JS transform needed. */
+#tl-body{display:flex;flex:1;overflow:hidden;align-items:stretch;}
+
+/* Fixed left y-axis — mirrors vertical scroll of tl-scroll via scrollTop sync */
+#tl-yaxis{width:52px;min-width:52px;flex-shrink:0;border-right:1px solid var(--bd);background:var(--sf);position:relative;z-index:5;overflow:hidden;align-self:stretch;}
+.y-label{position:absolute;right:5px;font-size:8px;font-family:monospace;color:var(--mu);transform:translateY(-50%);white-space:nowrap;}
+
+/* Main scroll container — scrolls both X and Y */
+#tl-scroll{flex:1;overflow:auto;position:relative;}
+#tl-scroll::-webkit-scrollbar{width:6px;height:6px;}
+#tl-scroll::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px;}
+
+/* Sticky date header row — stays at top when scrolling vertically */
+#tl-date-headers{display:flex;position:sticky;top:0;z-index:20;background:var(--sf);border-bottom:2px solid var(--bd);flex-shrink:0;}
+.date-hd{min-width:var(--col-w,80px);width:var(--col-w,80px);border-right:1px solid var(--bd);padding:5px 4px 3px;flex-shrink:0;text-align:center;cursor:default;transition:background .12s;}
+.date-hd.today-col{background:rgba(52,211,153,.1);}
+.date-hd.week-col{background:rgba(108,138,255,.05);}
+.date-hd.today-col .dh-num{color:var(--gn);}
+.dh-dow{font-size:8px;font-family:monospace;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;}
+.dh-num{font-size:16px;font-weight:800;font-family:monospace;line-height:1.1;color:var(--tx);}
+
+/* Grid sits below the sticky header, inside the same scroll container */
+#tl-grid{position:relative;display:flex;}
+
+/* Date column */
+.date-col{position:relative;min-width:var(--col-w,80px);width:var(--col-w,80px);flex-shrink:0;border-right:1px solid var(--bd);}
+/* Alternating day columns for easier visual scanning */
+.date-col:nth-child(even){background:rgba(108,138,255,.025);}
+.date-col:nth-child(odd){background:transparent;}
+/* Hour lines — clearer grid */
+.hour-line{position:absolute;left:0;right:0;border-top:1px solid rgba(255,255,255,.07);pointer-events:none;}
+.hour-line.hr6,.hour-line.hr12,.hour-line.hr18{border-top-color:rgba(255,255,255,.18);border-top-width:1px;}
+/* Half-hour lines subtler */
+.hour-line.half{border-top:1px dashed rgba(255,255,255,.03);}
+/* Light theme overrides for grid lines */
+[data-theme="light"] .hour-line{border-top-color:rgba(0,0,0,.06);}
+[data-theme="light"] .hour-line.hr6,[data-theme="light"] .hour-line.hr12,[data-theme="light"] .hour-line.hr18{border-top-color:rgba(0,0,0,.14);}
+[data-theme="light"] .date-col:nth-child(even){background:rgba(58,95,217,.025);}
+[data-theme="light"] .date-col{border-right-color:var(--bd);}
+
+/* ── SHIFT BLOCKS ── */
+.shift-block{position:absolute;left:3px;right:3px;border-radius:4px;font-size:8px;font-family:monospace;font-weight:700;padding:2px 4px;overflow:hidden;cursor:default;border:1px solid transparent;transition:opacity .12s;z-index:3;}
+.shift-block:hover{opacity:.85;z-index:10;}
+.shift-block.type-prep{background:rgba(245,158,11,.22);border-color:rgba(245,158,11,.5);color:#f59e0b;}
+.shift-block.type-shift{background:rgba(108,138,255,.28);border-color:rgba(108,138,255,.7);color:#a5b4fc;}
+.shift-block.type-post{background:rgba(167,139,250,.2);border-color:rgba(167,139,250,.5);color:#c4b5fd;}
+.shift-block.type-overlap{background:rgba(239,68,68,.22);border-color:rgba(239,68,68,.8);color:#fca5a5;animation:pulse-red 1.5s ease-in-out infinite;}
+.shift-block.type-dayflow{background:rgba(45,212,191,.18);border-color:rgba(45,212,191,.6);color:#5eead4;border-style:dashed;}
+[data-theme="light"] .shift-block.type-dayflow{background:rgba(13,148,136,.12);border-color:rgba(13,148,136,.5);color:#0d9488;}
+@keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4);}50%{box-shadow:0 0 0 4px rgba(239,68,68,.12);}}
+[data-theme="light"] .shift-block.type-prep{background:rgba(217,119,6,.16);border-color:rgba(217,119,6,.5);color:#92400e;}
+[data-theme="light"] .shift-block.type-shift{background:rgba(58,95,217,.18);border-color:rgba(58,95,217,.6);color:#3a5fd9;}
+[data-theme="light"] .shift-block.type-post{background:rgba(124,58,237,.14);border-color:rgba(124,58,237,.45);color:#7c3aed;}
+
+/* ── RAIN BLOCKS ── */
+.rain-block{position:absolute;left:0;right:0;pointer-events:none;z-index:1;transition:opacity .2s;}
+.rain-block.hidden{display:none;}
+
+/* ── TODAY / WEEK COLUMN BACKGROUNDS — override alternating ── */
+.date-col.today-col{background:rgba(52,211,153,.07)!important;}
+.date-col.week-col{background:rgba(108,138,255,.04)!important;}
+.date-col.job-day-col{background:rgba(245,158,11,.05)!important;border-top:2px solid rgba(245,158,11,.5);}
+.date-hd.job-day-hd{background:rgba(245,158,11,.08);color:var(--gd);}
+.date-hd.job-day-hd .dh-num{color:var(--gd);}
+[data-theme="light"] .date-col.today-col{background:rgba(5,150,105,.07)!important;}
+[data-theme="light"] .date-col.week-col{background:rgba(58,95,217,.04)!important;}
+
+/* ── BOTTOM MONTH NAV ── */
+#month-nav{display:flex;align-items:center;gap:4px;padding:5px 10px;background:var(--sf);border-top:2px solid var(--bd);flex-shrink:0;overflow-x:auto;}
+#month-nav::-webkit-scrollbar{height:3px;}
+#month-nav::-webkit-scrollbar-thumb{background:var(--bd);}
+.month-btn{padding:4px 10px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;white-space:nowrap;transition:all .12s;flex-shrink:0;}
+.month-btn:hover{border-color:var(--ac);color:var(--ac);}
+.month-btn.active{background:var(--ac);color:#fff;border-color:var(--ac);}
+.month-btn.cur-month{border-color:var(--gn);color:var(--gn);}
+.month-btn.cur-month.active{background:var(--gn);color:#fff;border-color:var(--gn);}
+
+/* ── OVERLAP ALERT BANNER ── */
+#overlap-banner{display:none;align-items:center;gap:8px;padding:4px 12px;background:rgba(239,68,68,.12);border-bottom:1px solid rgba(239,68,68,.3);flex-shrink:0;font-size:10px;color:var(--rd);font-family:monospace;}
+#overlap-banner.show{display:flex;}
+
+/* ── LEGEND ── */
+#legend{display:flex;align-items:center;gap:10px;padding:3px 10px;background:var(--sf2);border-bottom:1px solid var(--bd);flex-shrink:0;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:8px;color:var(--mu);font-family:monospace;}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+/* ══════════════════════════════════════
+   PARSE DATA PANEL (Page 2 — same style as AbhiPlanner)
+══════════════════════════════════════ */
+#pi-panel{position:fixed;inset:0;background:var(--bg);z-index:900;display:none;flex-direction:column;}
+#pi-panel.open{display:flex;}
+#pi-tb{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--sf);border-bottom:1px solid var(--bd);flex-shrink:0;}
+#pi-tb h2{font-size:12px;font-weight:700;color:var(--ac);font-family:monospace;}
+.pi-back{display:flex;align-items:center;gap:5px;font-size:10px;cursor:pointer;color:var(--mu);border:1px solid var(--bd);border-radius:5px;padding:3px 9px;background:transparent;font-family:inherit;transition:border-color .12s,color .12s;}
+.pi-back:hover{border-color:var(--ac);color:var(--ac);}
+#pi-body{display:flex;flex:1;overflow:hidden;}
+#pi-left{width:380px;min-width:240px;display:flex;flex-direction:column;border-right:1px solid var(--bd);flex-shrink:0;}
+#pi-left-hd{padding:10px 14px 6px;border-bottom:1px solid var(--bd);}
+#pi-left-hd h3{font-size:11px;font-weight:700;font-family:monospace;color:var(--tx);margin-bottom:3px;}
+#pi-left-hd p{font-size:9px;color:var(--mu);line-height:1.6;}
+#pi-mode-sel{display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;}
+.pi-mode-btn{flex:1;padding:5px 0;border-radius:4px;font-size:9px;font-weight:700;font-family:monospace;border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;transition:all .12s;}
+.pi-mode-btn.active{background:var(--ac);color:#fff;border-color:var(--ac);}
+#pi-paste-wrap{flex:1;padding:10px;display:flex;flex-direction:column;gap:8px;}
+#pi-paste{width:100%;flex:1;background:var(--sf2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);font-size:11px;font-family:'Courier New',monospace;padding:10px;outline:none;resize:none;line-height:1.6;}
+#pi-paste:focus{border-color:var(--ac);}
+#pi-parse-btn{padding:6px 14px;border-radius:5px;font-size:11px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-family:inherit;font-weight:600;}
+#pi-parse-btn:hover{background:transparent;color:var(--ac);}
+#pi-right{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#pi-right-hd{padding:10px 14px 6px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+#pi-right-hd h3{font-size:11px;font-weight:700;font-family:monospace;color:var(--tx);flex:1;}
+#pi-status{font-size:10px;font-family:monospace;padding:2px 8px;border-radius:4px;}
+#pi-status.ok{background:rgba(52,211,153,.12);color:var(--gn);border:1px solid rgba(52,211,153,.3);}
+#pi-status.err{background:rgba(239,68,68,.12);color:var(--rd);border:1px solid rgba(239,68,68,.3);}
+#pi-status.idle{background:var(--sf2);color:var(--mu);border:1px solid var(--bd);}
+#pi-preview{flex:1;overflow-y:auto;padding:10px 14px;}
+#pi-preview::-webkit-scrollbar{width:3px;}
+#pi-preview::-webkit-scrollbar-thumb{background:var(--bd);}
+.pi-table{width:100%;border-collapse:collapse;font-size:10px;}
+.pi-table th{text-align:left;font-size:8px;font-family:monospace;color:var(--mu);text-transform:uppercase;letter-spacing:.6px;padding:3px 6px;border-bottom:1px solid var(--bd);}
+.pi-table td{padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;font-family:monospace;font-size:9px;}
+.pi-table tr.err-row td{color:var(--rd);background:rgba(239,68,68,.06);}
+.pi-table tr.ok-row:hover td{background:rgba(108,138,255,.06);}
+.pi-row-date{color:var(--ac);font-weight:700;}
+.pi-row-time{color:var(--gn);}
+.pi-row-dur{color:var(--gd);}
+#pi-errors{padding:0 14px 10px;display:none;}
+#pi-errors.show{display:block;}
+.pi-err-list{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:8px 12px;font-size:9px;color:var(--rd);font-family:monospace;line-height:1.8;}
+#pi-footer{padding:10px 14px;border-top:1px solid var(--bd);display:none;align-items:center;gap:10px;flex-wrap:wrap;}
+#pi-footer.show{display:flex;}
+.pi-sum{font-size:10px;color:var(--mu);flex:1;}
+.pi-act-btn{padding:6px 16px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;border:1px solid var(--ac);color:var(--ac);background:transparent;}
+.pi-act-btn.primary{background:var(--ac);color:#fff;}
+.pi-act-btn:hover{background:var(--ac);color:#fff;}
+.pi-act-btn.primary:hover{background:transparent;color:var(--ac);}
+.pi-act-btn.danger{border-color:var(--rd);color:var(--rd);}
+.pi-act-btn.danger:hover{background:var(--rd);color:#fff;}
+
+/* weather loading indicator */
+#wx-status{font-size:9px;font-family:monospace;color:var(--mu);padding:2px 8px;border-radius:4px;border:1px solid var(--bd);background:var(--sf2);}
+
+/* ── SHIFT CONTEXT MENU ── */
+#shift-ctx{position:fixed;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:4px 0;min-width:190px;z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.55);display:none;}
+#shift-ctx.open{display:block;}
+.sctx-hd{padding:6px 12px 4px;font-size:9px;font-family:monospace;color:var(--mu);border-bottom:1px solid var(--bd);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sctx-item{padding:7px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:background .1s;}
+.sctx-item:hover{background:var(--sf2);}
+.sctx-item.danger{color:var(--rd);}
+.sctx-item.danger:hover{background:rgba(239,68,68,.08);}
+.sctx-sep{height:1px;background:var(--bd);margin:3px 0;}
+
+/* ── MODE 3: MANUAL PICKER ── */
+#pi-manual{display:none;flex:1;flex-direction:column;overflow-y:auto;padding:14px;}
+#pi-manual.show{display:flex;}
+.man-section{margin-bottom:18px;}
+.man-label{font-size:9px;font-family:monospace;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:block;}
+/* Drum roller */
+.drum-row{display:flex;gap:6px;align-items:center;}
+.drum-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.drum-lbl{font-size:8px;font-family:monospace;color:var(--mu);}
+.drum{width:64px;height:120px;overflow:hidden;position:relative;border-radius:8px;border:1px solid var(--bd);background:var(--sf2);cursor:pointer;user-select:none;}
+.drum.wide{width:110px;}
+.drum-list{display:flex;flex-direction:column;transition:transform .15s cubic-bezier(.25,.46,.45,.94);}
+.drum-item{height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-family:monospace;font-weight:700;color:var(--mu);flex-shrink:0;transition:color .1s,font-size .1s;}
+.drum-item.selected{color:var(--tx);font-size:16px;}
+/* Selection highlight band */
+.drum::before,.drum::after{content:'';position:absolute;left:0;right:0;height:40px;pointer-events:none;z-index:2;}
+.drum::before{top:0;background:linear-gradient(to bottom,var(--sf2) 0%,transparent 100%);}
+.drum::after{bottom:0;background:linear-gradient(to top,var(--sf2) 0%,transparent 100%);}
+.drum-sel-band{position:absolute;top:50%;left:0;right:0;height:40px;transform:translateY(-50%);border-top:1px solid var(--ac);border-bottom:1px solid var(--ac);background:rgba(108,138,255,.06);pointer-events:none;z-index:1;}
+/* Quick-text input for mode 3 */
+#man-quick-inp{width:100%;background:var(--sf2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);font-size:13px;font-family:'Courier New',monospace;padding:8px 10px;outline:none;}
+#man-quick-inp:focus{border-color:var(--ac);}
+.man-quick-hint{font-size:9px;color:var(--mu);font-family:monospace;margin-top:4px;}
+.man-submit{padding:8px 20px;border-radius:6px;font-size:12px;font-weight:700;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-family:inherit;transition:all .12s;margin-top:10px;}
+.man-submit:hover{background:transparent;color:var(--ac);}
+.man-or{font-size:9px;color:var(--mu);font-family:monospace;text-align:center;padding:8px 0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);margin:12px 0;}
+.man-preview-box{background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:10px;font-family:monospace;color:var(--tx);line-height:1.8;min-height:60px;}
+.man-preview-box .ok{color:var(--gn);}
+.man-preview-box .err{color:var(--rd);}
+</style>
+</head>
+<body>
+
+<!-- ── TOOLBAR ── -->
+<div id="tb">
+  <h1>📅 Calendar 2026</h1>
+  <div class="sp"></div>
+  <button class="btn" onclick="openPI()">⊞ Parse Shifts</button>
+  <button class="btn danger" onclick="clearAllShifts()" title="Clear all shift data">✕ Clear Shifts</button>
+  <div class="sp"></div>
+  <button class="btn toggle-rain" id="rain-btn" onclick="toggleRain()">🌧 Rain: ON</button>
+  <span id="wx-status">weather: idle</span>
+  <button class="btn" onclick="fetchWeather(true)" title="Reload weather">⟳ Weather</button>
+  <div class="sp"></div>
+  <button class="btn" onclick="zoom(-1)">🔍−</button>
+  <button class="btn" onclick="zoom(1)">🔍+</button>
+  <button class="btn" onclick="zoomReset()">fit</button>
+  <div class="sp"></div>
+  <button class="btn" onclick="toggleTheme()">◐ theme</button>
+  <div style="margin-left:auto;font-size:9px;font-family:monospace;color:var(--mu);">scroll = pan dates · zoom = time scale</div>
+</div>
+
+<!-- ── OVERLAP BANNER ── -->
+<div id="overlap-banner">
+  ⚠ Needs attention: overlapping shifts detected — highlighted in red
+  <button onclick="document.getElementById('overlap-banner').classList.remove('show')" style="margin-left:auto;font-size:9px;background:transparent;border:none;color:var(--rd);cursor:pointer;">✕ dismiss</button>
+</div>
+
+<!-- ── LEGEND ── -->
+<div id="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(245,158,11,.5);border:1px solid #f59e0b;"></div>Prep/Travel (2h before)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(108,138,255,.5);border:1px solid #6c8aff;"></div>Shift</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(167,139,250,.4);border:1px solid #a78bfa;"></div>Post-shift (2h after)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(239,68,68,.4);border:1px solid #ef4444;"></div>Overlap ⚠</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(56,189,248,.35);border:1px solid #38bdf8;"></div>Rain</div>
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(45,212,191,.3);border:1px dashed #2dd4bf;"></div>DayFlow block</div>
+  <div class="leg-item" style="margin-left:8px;color:var(--gn);">█ Today</div>
+  <div class="leg-item" style="color:var(--ac);">░ Next 7 days</div>
+</div>
+
+<!-- ── MAIN TIMELINE ── -->
+<div id="main">
+  <div id="timeline-wrap">
+    <!-- Body: fixed y-axis left, scrollable area right -->
+    <div id="tl-body">
+      <div id="tl-yaxis"></div>
+      <!-- tl-scroll handles both X and Y scroll.
+           date-headers inside it are position:sticky top:0 so they pin while scrolling vertically
+           and scroll naturally with horizontal pan. -->
+      <div id="tl-scroll">
+        <div id="tl-date-headers"></div>
+        <div id="tl-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MONTH NAV ── -->
+<div id="month-nav"></div>
+
+<!-- ══════════════════════════════════
+     PARSE DATA PANEL
+══════════════════════════════════ -->
+<div id="pi-panel">
+  <div id="pi-tb">
+    <button class="pi-back" onclick="closePI()">← back to calendar</button>
+    <h2>⊞ Parse Shift Data — Spreadsheet Import</h2>
+    <span style="font-size:9px;color:var(--mu);font-family:monospace;">Copy from Excel / Google Sheets and paste below</span>
+  </div>
+  <div id="pi-body">
+    <!-- LEFT -->
+    <div id="pi-left">
+      <div id="pi-left-hd">
+        <h3>Paste your shift data</h3>
+        <p>
+          Paste tab-separated data from Excel / Sheets. Supported columns:<br><br>
+          <strong>Mode 1 — Start + End time:</strong><br>
+          &nbsp;Date &nbsp;·&nbsp; Start Time &nbsp;·&nbsp; End Time<br><br>
+          <strong>Mode 2 — Start + Duration:</strong><br>
+          &nbsp;Date &nbsp;·&nbsp; Start Time &nbsp;·&nbsp; Duration (e.g. 8h, 8:00, 8)<br><br>
+          Date formats accepted: <strong>12 May 2026</strong>, <strong>12/05/2026</strong>, <strong>2026-05-12</strong><br>
+          Time formats: <strong>09:00</strong>, <strong>9:00 AM</strong>, <strong>21:30</strong><br>
+          Duration: <strong>8h</strong>, <strong>8:00</strong>, <strong>7h 30m</strong>, <strong>7.5</strong><br><br>
+          Multiple rows = multiple shifts. Night shifts crossing midnight are handled automatically.
+        </p>
+      </div>
+      <!-- MODE SELECT -->
+      <div id="pi-mode-sel">
+        <button class="pi-mode-btn active" id="mode-btn-end" onclick="setMode('end')">Mode 1: Start + End</button>
+        <button class="pi-mode-btn" id="mode-btn-dur" onclick="setMode('dur')">Mode 2: Start + Duration</button>
+        <button class="pi-mode-btn" id="mode-btn-manual" onclick="setMode('manual')">Mode 3: Manual Entry</button>
+      </div>
+
+      <!-- MODES 1 & 2: paste textarea -->
+      <div id="pi-paste-wrap">
+        <textarea id="pi-paste" placeholder="Quick format (all modes):&#10;26/11, 22:00, 8h15m&#10;12/5, 09:00, 17:00&#10;&#10;Or tab-separated Excel paste:&#10;12 May 2026&#9;22:00&#9;06:00&#10;14 May 2026&#9;09:00&#9;8h&#10;&#10;Date: 26/11 · 12 May 2026 · 2026-05-12&#10;Time: 22:00 · 9:00 AM&#10;Duration/End: 8h15m · 8:30 · 17:00"></textarea>
+        <button id="pi-parse-btn" onclick="piParse()">⚡ Parse & Preview</button>
+      </div>
+
+      <!-- MODE 3: Manual drum-roll picker -->
+      <div id="pi-manual">
+        <span class="man-label">📅 Select Date</span>
+        <div class="drum-row" style="margin-bottom:16px;">
+          <div class="drum-wrap">
+            <div class="drum-lbl">Day</div>
+            <div class="drum" id="drum-day"><div class="drum-sel-band"></div><div class="drum-list" id="dlist-day"></div></div>
+          </div>
+          <div class="drum-wrap">
+            <div class="drum-lbl">Month</div>
+            <div class="drum wide" id="drum-month"><div class="drum-sel-band"></div><div class="drum-list" id="dlist-month"></div></div>
+          </div>
+        </div>
+
+        <span class="man-label">⏰ Shift Start Time</span>
+        <div class="drum-row" style="margin-bottom:16px;">
+          <div class="drum-wrap">
+            <div class="drum-lbl">Hour</div>
+            <div class="drum" id="drum-sh"><div class="drum-sel-band"></div><div class="drum-list" id="dlist-sh"></div></div>
+          </div>
+          <div style="font-size:18px;font-weight:700;color:var(--mu);padding-top:16px;">:</div>
+          <div class="drum-wrap">
+            <div class="drum-lbl">Min</div>
+            <div class="drum" id="drum-sm"><div class="drum-sel-band"></div><div class="drum-list" id="dlist-sm"></div></div>
+          </div>
+        </div>
+
+        <span class="man-label">⏱ Shift Duration</span>
+        <div class="drum-row" style="margin-bottom:16px;">
+          <div class="drum-wrap">
+            <div class="drum-lbl">Hours</div>
+            <div class="drum" id="drum-dh"><div class="drum-sel-band"></div><div class="drum-list" id="dlist-dh"></div></div>
+          </div>
+          <div style="font-size:18px;font-weight:700;color:var(--mu);padding-top:16px;">h</div>
+          <div class="drum-wrap">
+            <div class="drum-lbl">Mins</div>
+            <div class="drum" id="drum-dm"><div class="drum-sel-band"></div><div class="drum-list" id="dlist-dm"></div></div>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="man-preview-box" id="man-preview">Select values above to preview shift</div>
+        <button class="man-submit" onclick="manSubmit()">✓ Add This Shift</button>
+
+        <div class="man-or">— or type directly —</div>
+        <input id="man-quick-inp" type="text" placeholder="26/11, 22:00, 8h15m" oninput="manQuickParse(this.value)" onkeydown="if(event.key==='Enter')manQuickSubmit()"/>
+        <div class="man-quick-hint">Format: DD/MM, HH:MM, duration (8h · 8h30m · 8:30) — press Enter to add</div>
+      </div>
+    </div>
+    <!-- RIGHT: preview -->
+    <div id="pi-right">
+      <div id="pi-right-hd">
+        <h3>Preview</h3>
+        <span id="pi-status" class="idle">paste data and click Parse</span>
+      </div>
+      <div id="pi-errors"></div>
+      <div id="pi-preview"></div>
+      <div id="pi-footer">
+        <span class="pi-sum" id="pi-sum"></span>
+        <button class="pi-act-btn danger" onclick="piClear()">✕ Clear & Re-paste</button>
+        <button class="pi-act-btn primary" onclick="piCommit()">✓ Import Shifts</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════
+var YEAR = 2026;
+// ── Job days from Shift Tracker ──
+var jobDays = {};
+try{ var _cal_sh=JSON.parse(localStorage.getItem('ad_shifts')||'[]'); _cal_sh.forEach(function(s){jobDays[s.date]=true;}); }catch(e){}
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// Storage
+var STORAGE_KEY = 'abhiDesk_calendar2026_shifts';
+var WEATHER_KEY = 'abhiDesk_calendar2026_weather';
+var THEME_KEY = 'abhiDesk_calendar2026_theme';
+
+// State
+var curMonth = (new Date().getFullYear() === YEAR) ? new Date().getMonth() : 0;
+var hrPx = 30; // will be recalculated at init to fit full day — see calcFitHrPx()
+var rainVisible = true;
+var shiftData = {}; // { 'YYYY-MM-DD': [{id, label, start, end, type}] }
+var weatherData = {}; // { 'YYYY-MM-DD': [{hour, rain_mm, rain_prob}] }
+var piMode = 'end'; // 'end' | 'dur' | 'manual'
+var piParsed = [];
+var manQuickResult = null; // holds parsed result from quick-text box
+
+// ════════════════════════════════════
+// THEME
+// ════════════════════════════════════
+(function(){
+  var th = localStorage.getItem(THEME_KEY) || 'dark';
+  document.documentElement.setAttribute('data-theme', th);
+})();
+
+function toggleTheme(){
+  var cur = document.documentElement.getAttribute('data-theme');
+  var next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem(THEME_KEY, next);
+}
+
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'theme'){
+    document.documentElement.setAttribute('data-theme', e.data.dark ? 'dark' : 'light');
+  }
+  if(e.data && e.data.type === 'job_days_updated' && e.data.jobDates){
+    jobDays = {};
+    e.data.jobDates.forEach(function(d){ jobDays[d] = true; });
+    // Re-apply job-day class to all date columns
+    document.querySelectorAll('.date-col').forEach(function(col){
+      var iso = col.dataset.iso;
+      col.classList.toggle('job-day-col', !!(iso && jobDays[iso]));
+    });
+  }
+});
+
+// ════════════════════════════════════
+// DATE UTILITIES
+// ════════════════════════════════════
+function daysInMonth(month){ // 0-based
+  return new Date(YEAR, month+1, 0).getDate();
+}
+function isoDate(month, day){
+  return YEAR + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+}
+function parseIso(iso){ // returns {y,m,d} 0-based month
+  var p = iso.split('-');
+  return {y:+p[0], m:+p[1]-1, d:+p[2]};
+}
+function addMinutesToIso(iso, mins){
+  var p = parseIso(iso);
+  var dt = new Date(p.y, p.m, p.d, 0, mins);
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+}
+function minutesToTime(m){ // 0-1440
+  var h = Math.floor(m/60) % 24;
+  var mm = m % 60;
+  return String(h).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+}
+function today(){
+  var n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0');
+}
+function isToday(iso){ return iso === today(); }
+function isNextWeek(iso){
+  var n = new Date(); var t = new Date(iso.replace(/-/g,'/'));
+  var diff = (t - n) / 86400000;
+  return diff >= 0 && diff <= 7;
+}
+
+// ════════════════════════════════════
+// STORAGE
+// ════════════════════════════════════
+function loadShifts(){
+  try{ shiftData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch(e){ shiftData = {}; }
+}
+function saveShifts(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(shiftData)); }
+  catch(e){}
+  saveCalendarToShared(); // mirror shift-type blocks to shared store for DayFlow
+}
+function loadWeather(){
+  try{ weatherData = JSON.parse(localStorage.getItem(WEATHER_KEY) || '{}'); }
+  catch(e){ weatherData = {}; }
+}
+function saveWeather(){
+  try{ localStorage.setItem(WEATHER_KEY, JSON.stringify(weatherData)); }
+  catch(e){}
+}
+
+// ════════════════════════════════════
+// ZOOM
+// ════════════════════════════════════
+function zoom(dir){
+  var steps = [20, 28, 36, 40, 50, 64, 80, 100, 128];
+  var i = steps.indexOf(hrPx);
+  if(i === -1) i = 3;
+  i = Math.max(0, Math.min(steps.length-1, i + dir));
+  hrPx = steps[i];
+  renderMonth(curMonth);
+}
+function calcFitHrPx(){
+  // Compute hrPx so 24 hours fills the available body height exactly
+  var avail = document.getElementById('tl-body').offsetHeight || window.innerHeight - 160;
+  return Math.max(18, Math.floor(avail / 24));
+}
+function zoomReset(){
+  hrPx = calcFitHrPx();
+  renderMonth(curMonth);
+  // scroll back to top after reset
+  setTimeout(function(){ document.getElementById('tl-scroll').scrollTop = 0; }, 60);
+}
+
+// ════════════════════════════════════
+// MONTH NAV
+// ════════════════════════════════════
+function buildMonthNav(){
+  var nav = document.getElementById('month-nav');
+  nav.innerHTML = '';
+  var nowM = new Date().getMonth();
+  MONTHS.forEach(function(mn, i){
+    var b = document.createElement('button');
+    b.className = 'month-btn' + (i === curMonth ? ' active' : '') + (i === nowM && YEAR === new Date().getFullYear() ? ' cur-month' : '');
+    b.textContent = MONTHS_SHORT[i];
+    b.onclick = (function(m){ return function(){ switchMonth(m); }; })(i);
+    nav.appendChild(b);
+  });
+}
+function switchMonth(m){
+  curMonth = m;
+  buildMonthNav();
+  renderMonth(m);
+  fetchWeather(false);
+}
+
+// ════════════════════════════════════
+// RENDER MONTH
+// ════════════════════════════════════
+function renderMonth(m){
+  var days = daysInMonth(m);
+  var scrollEl = document.getElementById("tl-scroll");
+  var availW = (scrollEl ? scrollEl.offsetWidth : window.innerWidth) - 4;
+  var naturalW = Math.floor(availW / days);
+  var colW = Math.max(80, Math.min(180, naturalW));
+  var totalH = hrPx * 24;
+
+  // CSS var — used by .date-hd and .date-col min-width
+  document.documentElement.style.setProperty('--col-w', colW + 'px');
+
+  // ── Date headers (sticky inside tl-scroll) ──
+  var hdCont = document.getElementById('tl-date-headers');
+  hdCont.innerHTML = '';
+  for(var d = 1; d <= days; d++){
+    var iso = isoDate(m, d);
+    var dow = new Date(YEAR, m, d).getDay();
+    var cls = 'date-hd' + (isToday(iso) ? ' today-col' : (isNextWeek(iso) ? ' week-col' : '')) + (jobDays[iso] ? ' job-day-hd' : '');
+    var hd = document.createElement('div');
+    hd.className = cls;
+    hd.style.minWidth = hd.style.width = colW + 'px';
+    hd.innerHTML = '<div class="dh-dow">' + DAYS[dow] + '</div><div class="dh-num">' + d + '</div>';
+    hdCont.appendChild(hd);
+  }
+
+  // ── Y-axis (fixed left panel, synced vertically via translateY) ──
+  var yax = document.getElementById('tl-yaxis');
+  yax.innerHTML = '';
+  var yaxInner = document.createElement('div');
+  yaxInner.id = 'yax-inner';
+  yaxInner.style.cssText = 'position:relative;height:' + totalH + 'px;will-change:transform;';
+  for(var h = 0; h <= 24; h++){
+    var lbl = document.createElement('div');
+    lbl.className = 'y-label';
+    lbl.style.top = (h * hrPx) + 'px';
+    lbl.textContent = String(h % 24).padStart(2,'0') + ':00';
+    yaxInner.appendChild(lbl);
+  }
+  yax.appendChild(yaxInner);
+
+  // ── Grid ──
+  var grid = document.getElementById('tl-grid');
+  grid.innerHTML = '';
+  grid.style.height = totalH + 'px';
+  grid.style.width = (colW * days) + 'px';
+  grid.style.minWidth = (colW * days) + 'px';
+
+  // Sync y-axis labels vertically: use a wrapper div translated by scrollTop
+  var tlScroll = document.getElementById('tl-scroll');
+  tlScroll.onscroll = function(){
+    var wrap = document.getElementById('yax-inner');
+    if(wrap) wrap.style.transform = 'translateY(-' + tlScroll.scrollTop + 'px)';
+  };
+
+  // build date columns
+  for(var d2 = 1; d2 <= days; d2++){
+    var iso2 = isoDate(m, d2);
+    var isT = isToday(iso2);
+    var isW = isNextWeek(iso2) && !isT;
+    var isJ = !!jobDays[iso2];
+    var col = document.createElement('div');
+    col.className = 'date-col' + (isT ? ' today-col' : (isW ? ' week-col' : '')) + (isJ ? ' job-day-col' : '');
+    col.style.height = totalH + 'px';
+    col.dataset.iso = iso2;
+
+    // hour lines
+    for(var hr2 = 0; hr2 < 24; hr2++){
+      var line = document.createElement('div');
+      line.className = 'hour-line' + (hr2 === 6 ? ' hr6' : hr2 === 12 ? ' hr12' : hr2 === 18 ? ' hr18' : '');
+      line.style.top = (hr2 * hrPx) + 'px';
+      col.appendChild(line);
+    }
+
+    // shift blocks for this date
+    renderShiftBlocks(col, iso2, totalH);
+
+    // rain blocks
+    renderRainBlocks(col, iso2, totalH);
+
+    // DayFlow sync blocks (read-only overlay)
+    renderDayflowBlocks(col, iso2);
+
+    grid.appendChild(col);
+  }
+
+  // Scroll: today = first visible column on left; vertical = 0 (full day fits)
+  setTimeout(function(){
+    var tls = document.getElementById('tl-scroll');
+    tls.scrollTop = 0; // full day visible — no vertical scroll needed at default zoom
+    var todayIso = today();
+    var todayMonth = parseInt(todayIso.slice(5,7)) - 1;
+    if(todayMonth === m && parseInt(todayIso.slice(0,4)) === YEAR){
+      var todayDay = parseInt(todayIso.slice(8,10));
+      // Place today as the first visible column (col index = todayDay-1, 0-based)
+      tls.scrollLeft = (todayDay - 1) * colW;
+    } else {
+      tls.scrollLeft = 0;
+    }
+  }, 50);
+
+  checkOverlaps();
+}
+
+// ════════════════════════════════════
+// SHIFT BLOCK RENDERING
+// ════════════════════════════════════
+function renderShiftBlocks(col, iso, totalH){
+  var blocks = shiftData[iso] || [];
+  // Detect overlaps for this date
+  var shiftBlocks = blocks.filter(function(b){ return b.type === 'shift'; });
+  var overlapIds = {};
+  for(var i = 0; i < shiftBlocks.length; i++){
+    for(var j = i+1; j < shiftBlocks.length; j++){
+      if(shiftBlocks[i].startMin < shiftBlocks[j].endMin && shiftBlocks[i].endMin > shiftBlocks[j].startMin){
+        overlapIds[shiftBlocks[i].id] = true;
+        overlapIds[shiftBlocks[j].id] = true;
+      }
+    }
+  }
+
+  blocks.forEach(function(b){
+    var isOverlap = b.type === 'shift' && overlapIds[b.id];
+    var el = document.createElement('div');
+    el.className = 'shift-block type-' + (isOverlap ? 'overlap' : b.type);
+    var top = (b.startMin / 60) * hrPx;
+    var ht = Math.max(4, ((b.endMin - b.startMin) / 60) * hrPx);
+    el.style.top = top + 'px';
+    el.style.height = ht + 'px';
+    el.dataset.blockId = b.id;
+    el.dataset.iso = iso;
+    // Label + delete × button
+    if(ht > 14){
+      var inner = document.createElement('div');
+      inner.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:2px;height:100%;';
+      var txt = document.createElement('span');
+      txt.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;';
+      txt.textContent = (isOverlap ? '⚠ ' : '') + b.label;
+      var xbtn = document.createElement('span');
+      xbtn.textContent = '×';
+      xbtn.title = 'Delete shift';
+      xbtn.style.cssText = 'flex-shrink:0;font-size:10px;line-height:1;padding:0 1px;opacity:0;cursor:pointer;transition:opacity .12s;border-radius:2px;';
+      xbtn.className = 'block-del-btn';
+      xbtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        openCtx(e, b, iso, false);
+      });
+      el.addEventListener('mouseenter', function(){ xbtn.style.opacity='1'; });
+      el.addEventListener('mouseleave', function(){ xbtn.style.opacity='0'; });
+      inner.appendChild(txt);
+      inner.appendChild(xbtn);
+      el.appendChild(inner);
+    }
+    // Right-click context menu
+    el.addEventListener('contextmenu', function(e){
+      e.preventDefault();
+      openCtx(e, b, iso, true);
+    });
+    el.title = b.label + ' (' + minutesToTime(b.startMin) + '–' + minutesToTime(b.endMin) + ') — right-click to delete';
+    col.appendChild(el);
+  });
+}
+
+// ════════════════════════════════════
+// RAIN BLOCK RENDERING
+// ════════════════════════════════════
+function renderRainBlocks(col, iso, totalH){
+  var wx = weatherData[iso] || [];
+  if(!wx.length) return;
+
+  // Merge consecutive rainy hours into blocks
+  var i = 0;
+  while(i < wx.length){
+    var h = wx[i];
+    if(h.rain_mm > 0 || h.rain_prob >= 30){
+      var j = i;
+      while(j < wx.length && (wx[j].rain_mm > 0 || wx[j].rain_prob >= 30)) j++;
+      // block from hour i to j
+      var maxProb = 0, maxMm = 0;
+      for(var k = i; k < j; k++){
+        if(wx[k].rain_prob > maxProb) maxProb = wx[k].rain_prob;
+        if(wx[k].rain_mm > maxMm) maxMm = wx[k].rain_mm;
+      }
+      var opacity = 0.1 + (maxProb / 100) * 0.35;
+      var el = document.createElement('div');
+      el.className = 'rain-block' + (rainVisible ? '' : ' hidden');
+      el.style.top = (i * hrPx) + 'px';
+      el.style.height = ((j - i) * hrPx) + 'px';
+      el.style.background = 'rgba(56,189,248,' + opacity.toFixed(2) + ')';
+      el.style.borderLeft = '2px solid rgba(56,189,248,.6)';
+      el.title = '🌧 Rain ' + maxProb + '% · ' + maxMm.toFixed(1) + 'mm (hours ' + i + '–' + j + ')';
+      col.appendChild(el);
+      i = j;
+    } else {
+      i++;
+    }
+  }
+}
+
+// ════════════════════════════════════
+// TOGGLE RAIN
+// ════════════════════════════════════
+function toggleRain(){
+  rainVisible = !rainVisible;
+  var btn = document.getElementById('rain-btn');
+  btn.textContent = '🌧 Rain: ' + (rainVisible ? 'ON' : 'OFF');
+  btn.classList.toggle('on', rainVisible);
+  document.querySelectorAll('.rain-block').forEach(function(el){
+    el.classList.toggle('hidden', !rainVisible);
+  });
+}
+
+// ════════════════════════════════════
+// OVERLAP CHECK
+// ════════════════════════════════════
+function checkOverlaps(){
+  var hasOverlap = false;
+  Object.keys(shiftData).forEach(function(iso){
+    var blocks = (shiftData[iso] || []).filter(function(b){ return b.type === 'shift'; });
+    for(var i = 0; i < blocks.length && !hasOverlap; i++){
+      for(var j = i+1; j < blocks.length && !hasOverlap; j++){
+        if(blocks[i].startMin < blocks[j].endMin && blocks[i].endMin > blocks[j].startMin){
+          hasOverlap = true;
+        }
+      }
+    }
+  });
+  document.getElementById('overlap-banner').classList.toggle('show', hasOverlap);
+}
+
+// ════════════════════════════════════
+// SHIFT BUILDER
+// Adds a shift + prep + post blocks, splitting across midnight
+// ════════════════════════════════════
+function addShiftToData(iso, startMin, endMin, label){
+  // startMin and endMin are minutes from 00:00 on that iso date
+  // endMin can be > 1440 if night shift
+  var uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+
+  function addBlock(dateIso, sMin, eMin, type, lbl){
+    if(!shiftData[dateIso]) shiftData[dateIso] = [];
+    // clamp to 0-1440
+    sMin = Math.max(0, sMin);
+    eMin = Math.min(1440, eMin);
+    if(sMin >= eMin) return;
+    shiftData[dateIso].push({id: uid + '_' + type, label: lbl, startMin: sMin, endMin: eMin, type: type});
+  }
+
+  // Helper: add a time segment that may cross midnight
+  function addSegment(baseIso, fromMin, toMin, type, lbl){
+    // fromMin and toMin are absolute minutes from day start of baseIso
+    // can be negative (previous day) or > 1440 (next day)
+    if(fromMin < 0){
+      // portion on previous day
+      var prevIso = shiftPrevDay(baseIso);
+      addBlock(prevIso, 1440 + fromMin, 1440 + Math.min(0, toMin), type, lbl);
+      if(toMin > 0) addBlock(baseIso, 0, Math.min(1440, toMin), type, lbl);
+    } else if(fromMin >= 1440){
+      var nextIso = shiftNextDay(baseIso);
+      addBlock(nextIso, fromMin - 1440, toMin - 1440, type, lbl);
+    } else if(toMin > 1440){
+      addBlock(baseIso, fromMin, 1440, type, lbl);
+      var nextIso2 = shiftNextDay(baseIso);
+      addBlock(nextIso2, 0, toMin - 1440, type, lbl);
+    } else {
+      addBlock(baseIso, fromMin, toMin, type, lbl);
+    }
+  }
+
+  // Prep: startMin - 120 to startMin
+  addSegment(iso, startMin - 120, startMin, 'prep', '🚗 Prep');
+  // Shift: startMin to endMin
+  addSegment(iso, startMin, endMin, 'shift', '⚙ ' + label);
+  // Post: endMin to endMin + 120
+  addSegment(iso, endMin, endMin + 120, 'post', '🏠 Post');
+}
+
+function shiftNextDay(iso){
+  var p = parseIso(iso);
+  var d = new Date(p.y, p.m, p.d + 1);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function shiftPrevDay(iso){
+  var p = parseIso(iso);
+  var d = new Date(p.y, p.m, p.d - 1);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function clearAllShifts(){
+  if(!confirm('Clear all shift data? This cannot be undone.')) return;
+  shiftData = {};
+  saveShifts();
+  renderMonth(curMonth);
+}
+
+// ════════════════════════════════════
+// WEATHER API (Open-Meteo, London)
+// ════════════════════════════════════
+function fetchWeather(force){
+  if(!force){
+    loadWeather();
+    var d1 = isoDate(curMonth, 1);
+    if(weatherData[d1]) return; // already cached
+  }
+
+  var startDate = isoDate(curMonth, 1);
+  var endDate = isoDate(curMonth, daysInMonth(curMonth));
+  var wxStatus = document.getElementById('wx-status');
+  wxStatus.textContent = 'weather: loading…';
+
+  // Decide which API to use:
+  // - Archive API: for months that have fully passed (end date is in the past)
+  // - Forecast API: for current month or future months
+  // Archive API does NOT support precipitation_probability, so we only request precipitation.
+  // Forecast API supports both.
+  var now = new Date();
+  var monthEndDate = new Date(YEAR, curMonth + 1, 0); // last day of month
+  var isPast = monthEndDate < now;
+
+  // Also: forecast API only goes ~16 days ahead from today.
+  // For future months beyond 16 days, we skip (no data yet) rather than erroring.
+  var monthStartDate = new Date(YEAR, curMonth, 1);
+  var daysUntilStart = Math.floor((monthStartDate - now) / 86400000);
+  if(daysUntilStart > 14){
+    wxStatus.textContent = 'weather: not yet available';
+    return;
+  }
+
+  var fetchUrl, isArchive;
+  if(isPast){
+    // Archive: only precipitation available (no probability)
+    fetchUrl = 'https://archive-api.open-meteo.com/v1/archive?latitude=51.5085&longitude=-0.1257' +
+      '&hourly=precipitation' +
+      '&start_date=' + startDate + '&end_date=' + endDate + '&timezone=Europe%2FLondon';
+    isArchive = true;
+  } else {
+    // Forecast: clamp end_date to today+15 to avoid API errors
+    var maxEnd = new Date(now.getTime() + 14 * 86400000);
+    var clampedEnd = maxEnd < monthEndDate ? formatDate(maxEnd) : endDate;
+    fetchUrl = 'https://api.open-meteo.com/v1/forecast?latitude=51.5085&longitude=-0.1257' +
+      '&hourly=precipitation,precipitation_probability' +
+      '&start_date=' + startDate + '&end_date=' + clampedEnd +
+      '&timezone=Europe%2FLondon';
+    isArchive = false;
+  }
+
+  fetch(fetchUrl)
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data){
+      if(!data.hourly || !data.hourly.time) throw new Error('no hourly data in response');
+      var times = data.hourly.time;
+      var prec  = data.hourly.precipitation || [];
+      var prob  = isArchive ? [] : (data.hourly.precipitation_probability || []);
+
+      times.forEach(function(t, i){
+        var iso  = t.slice(0, 10);
+        var hour = parseInt(t.slice(11, 13));
+        if(!weatherData[iso]) weatherData[iso] = new Array(24).fill(null).map(function(){ return {rain_mm:0, rain_prob:0}; });
+        weatherData[iso][hour] = {
+          rain_mm:   prec[i]  != null ? prec[i]  : 0,
+          rain_prob: prob[i]  != null ? prob[i]  : 0
+        };
+      });
+
+      saveWeather();
+      wxStatus.textContent = 'weather: ✓ London';
+      renderMonth(curMonth);
+    })
+    .catch(function(err){
+      wxStatus.textContent = 'weather: ✗ error';
+      console.warn('[Calendar] Weather fetch failed:', fetchUrl, err);
+    });
+}
+
+function formatDate(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ════════════════════════════════════
+// PARSE DATA PANEL
+// ════════════════════════════════════
+function openPI(){
+  document.getElementById('pi-panel').classList.add('open');
+}
+function closePI(){
+  document.getElementById('pi-panel').classList.remove('open');
+}
+function setMode(m){
+  piMode = m;
+  document.getElementById('mode-btn-end').classList.toggle('active', m === 'end');
+  document.getElementById('mode-btn-dur').classList.toggle('active', m === 'dur');
+  document.getElementById('mode-btn-manual').classList.toggle('active', m === 'manual');
+  // show/hide panels
+  var pasteWrap = document.getElementById('pi-paste-wrap');
+  var manualWrap = document.getElementById('pi-manual');
+  if(m === 'manual'){
+    pasteWrap.style.display = 'none';
+    manualWrap.classList.add('show');
+    initDrums();
+  } else {
+    pasteWrap.style.display = '';
+    manualWrap.classList.remove('show');
+  }
+}
+function piClear(){
+  document.getElementById('pi-paste').value = '';
+  document.getElementById('pi-preview').innerHTML = '';
+  document.getElementById('pi-errors').innerHTML = '';
+  document.getElementById('pi-errors').className = '';
+  document.getElementById('pi-footer').className = 'pi-footer';
+  piSetStatus('idle', 'paste data and click Parse');
+  piParsed = [];
+}
+
+function piSetStatus(cls, txt){
+  var el = document.getElementById('pi-status');
+  el.className = cls;
+  el.textContent = txt;
+}
+
+// ── DATE PARSER ──
+function parseDate(s){
+  s = (s || '').trim();
+  if(!s) return null;
+  // ISO: 2026-05-12
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+  // DD/MM/YYYY or DD-MM-YYYY (full year)
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  // DD/MM or D/M — short form, assume YEAR 2026
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+  if(m){ var dd=+m[1],mm=+m[2]; if(mm>=1&&mm<=12&&dd>=1&&dd<=31) return new Date(YEAR,mm-1,dd); }
+  // "12 May 2026" or "12 May" (assume YEAR)
+  var MONTHMAP = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11,
+    january:0,february:1,march:2,april:3,june:5,july:6,august:7,september:8,october:9,november:10,december:11};
+  m = s.match(/^(\d{1,2})\s+([a-z]+)\s*(\d{4})?$/i);
+  if(m){
+    var mn = MONTHMAP[m[2].toLowerCase()];
+    if(mn !== undefined){
+      return new Date(+(m[3] || YEAR), mn, +m[1]);
+    }
+  }
+  // "May 12 2026"
+  m = s.match(/^([a-z]+)\s+(\d{1,2})\s*,?\s*(\d{4})?$/i);
+  if(m){
+    var mn2 = MONTHMAP[m[1].toLowerCase()];
+    if(mn2 !== undefined) return new Date(+(m[3] || YEAR), mn2, +m[2]);
+  }
+  return null;
+}
+
+// ── TIME PARSER → minutes from 00:00 ──
+function parseTime(s){
+  s = (s || '').trim().toUpperCase();
+  if(!s) return null;
+  // HH:MM AM/PM
+  var m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+  if(m){
+    var h = +m[1], mm = +m[2];
+    if(m[3] === 'PM' && h !== 12) h += 12;
+    if(m[3] === 'AM' && h === 12) h = 0;
+    if(h > 23 || mm > 59) return null;
+    return h * 60 + mm;
+  }
+  // HH:MM (no am/pm)
+  m = s.match(/^(\d{1,2})\s*(AM|PM)$/);
+  if(m){
+    var h2 = +m[1];
+    if(m[2] === 'PM' && h2 !== 12) h2 += 12;
+    if(m[2] === 'AM' && h2 === 12) h2 = 0;
+    return h2 * 60;
+  }
+  return null;
+}
+
+// ── DURATION PARSER → minutes ──
+function parseDuration(s){
+  s = (s || '').trim().toLowerCase();
+  if(!s) return null;
+  // HH:MM format
+  var m = s.match(/^(\d+):(\d{2})$/);
+  if(m){ var mm = +m[2]; if(mm > 59) return null; return +m[1]*60 + mm; }
+  // Xh Ym / Xh / Ym
+  var mH = s.match(/(\d+)\s*h/), mM = s.match(/(\d+)\s*m/);
+  if(mH || mM){ return (mH ? +mH[1]*60 : 0) + (mM ? +mM[1] : 0); }
+  // plain number = hours
+  if(/^\d+(\.\d+)?$/.test(s)){ var dec = parseFloat(s); return Math.round(dec * 60); }
+  return null;
+}
+
+// ── MAIN PARSER ──
+function piParse(){
+  var raw = document.getElementById('pi-paste').value;
+  if(!raw.trim()){ piSetStatus('idle', 'paste something first'); return; }
+
+  // Normalise: if a line is comma-separated (quick format) convert to tab-separated
+  // e.g. "26/11, 22:00, 8h15m"  →  "26/11\t22:00\t8h15m"
+  raw = raw.split(/\r?\n/).map(function(line){
+    line = line.replace(/\r/g,'').trim();
+    if(!line) return line;
+    // If no tab but has 2+ commas, treat as comma-separated quick entry
+    if(line.indexOf('\t') === -1 && (line.match(/,/g)||[]).length >= 1){
+      return line.split(',').map(function(c){ return c.trim(); }).join('\t');
+    }
+    return line;
+  }).join('\n');
+
+  var lines = raw.split(/\r?\n/).map(function(l){ return l.replace(/\r/g,'').trim(); }).filter(Boolean);
+  var results = [];
+  var errors = [];
+
+  lines.forEach(function(line, li){
+    // split by tab, or multiple spaces as fallback
+    var cells = line.split('\t').map(function(c){
+      c = c.trim();
+      if(c.length > 1 && c[0] === '"' && c[c.length-1] === '"') c = c.slice(1,-1).trim();
+      return c;
+    });
+    if(cells.length < 2){
+      // Try splitting by 2+ spaces
+      cells = line.split(/  +/).map(function(c){ return c.trim(); }).filter(Boolean);
+    }
+    if(cells.length < 2){
+      errors.push('Row ' + (li+1) + ': Need at least 2 columns (Date + Start Time)');
+      return;
+    }
+
+    var dateRaw = cells[0], startRaw = cells[1], thirdRaw = cells[2] || '';
+
+    var dt = parseDate(dateRaw);
+    if(!dt){
+      errors.push('Row ' + (li+1) + ': Cannot parse date "' + dateRaw + '"');
+      return;
+    }
+    if(dt.getFullYear() !== YEAR){
+      errors.push('Row ' + (li+1) + ': Date ' + dateRaw + ' is not in 2026');
+      return;
+    }
+
+    var startMin = parseTime(startRaw);
+    if(startMin === null){
+      errors.push('Row ' + (li+1) + ': Cannot parse start time "' + startRaw + '"');
+      return;
+    }
+
+    var iso = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+
+    var endMin, durMin;
+    if(piMode === 'end'){
+      endMin = parseTime(thirdRaw);
+      if(endMin === null && thirdRaw){
+        // maybe it's a duration?
+        durMin = parseDuration(thirdRaw);
+        if(durMin !== null){ endMin = startMin + durMin; }
+      }
+      if(endMin === null){
+        errors.push('Row ' + (li+1) + ': Cannot parse end time "' + thirdRaw + '"');
+        return;
+      }
+      // handle end < start = crosses midnight
+      if(endMin < startMin) endMin += 1440;
+      durMin = endMin - startMin;
+    } else {
+      durMin = parseDuration(thirdRaw);
+      if(durMin === null){
+        // try as end time
+        endMin = parseTime(thirdRaw);
+        if(endMin !== null){
+          if(endMin < startMin) endMin += 1440;
+          durMin = endMin - startMin;
+        } else {
+          errors.push('Row ' + (li+1) + ': Cannot parse duration "' + thirdRaw + '"');
+          return;
+        }
+      } else {
+        endMin = startMin + durMin;
+      }
+    }
+
+    if(durMin <= 0){
+      errors.push('Row ' + (li+1) + ': Duration must be positive');
+      return;
+    }
+
+    results.push({
+      iso: iso,
+      dateLabel: String(dt.getDate()) + ' ' + MONTHS_SHORT[dt.getMonth()],
+      startMin: startMin,
+      endMin: endMin,
+      durMin: durMin,
+      startLabel: minutesToTime(startMin),
+      endLabel: minutesToTime(endMin % 1440) + (endMin >= 1440 ? ' +1d' : ''),
+      durLabel: Math.floor(durMin/60) + 'h' + (durMin%60 ? ' ' + durMin%60 + 'm' : '')
+    });
+  });
+
+  piParsed = results;
+
+  // render errors
+  var errDiv = document.getElementById('pi-errors');
+  if(errors.length){
+    errDiv.className = 'show';
+    errDiv.innerHTML = '<div class="pi-err-list">⚠ ' + errors.length + ' row' + (errors.length>1?'s':'') + ' skipped:<br>' + errors.map(function(e){ return '· ' + e; }).join('<br>') + '</div>';
+  } else {
+    errDiv.className = ''; errDiv.innerHTML = '';
+  }
+
+  if(!results.length){
+    piSetStatus('err', errors.length ? '✕ all rows had errors' : 'no shifts found');
+    document.getElementById('pi-footer').className = 'pi-footer';
+    document.getElementById('pi-preview').innerHTML = '';
+    return;
+  }
+
+  piSetStatus('ok', '✓ ' + results.length + ' shift' + (results.length>1?'s':'') + ' ready');
+  document.getElementById('pi-sum').textContent = results.length + ' shift' + (results.length>1?'s':'') + ' parsed';
+  document.getElementById('pi-footer').className = 'pi-footer show';
+
+  // render preview table
+  var html = '<table class="pi-table"><thead><tr><th>#</th><th>Date</th><th>Start</th><th>End</th><th>Duration</th><th>Note</th></tr></thead><tbody>';
+  results.forEach(function(r, i){
+    var note = r.endMin > 1440 ? '🌙 night shift' : '';
+    html += '<tr class="ok-row"><td>' + (i+1) + '</td><td class="pi-row-date">' + r.dateLabel + '</td>' +
+      '<td class="pi-row-time">' + r.startLabel + '</td>' +
+      '<td class="pi-row-time">' + r.endLabel + '</td>' +
+      '<td class="pi-row-dur">' + r.durLabel + '</td>' +
+      '<td style="color:var(--mu);font-size:8px;">' + note + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('pi-preview').innerHTML = html;
+}
+
+function piCommit(){
+  if(!piParsed.length){ alert('Nothing to import. Parse first.'); return; }
+  piParsed.forEach(function(r){
+    addShiftToData(r.iso, r.startMin, r.endMin, 'Shift');
+  });
+  saveShifts();
+  closePI();
+  renderMonth(curMonth);
+  piClear();
+}
+
+
+// ════════════════════════════════════
+// DRUM ROLLER — Mode 3 Manual Entry
+// ════════════════════════════════════
+var drumState = {
+  day: 1, month: new Date().getMonth(), // 0-based
+  sh: 9, sm: 0,   // shift start hour/min
+  dh: 8, dm: 0    // duration hour/min
+};
+var drumsInited = false;
+
+function initDrums(){
+  if(drumsInited){ updateManPreview(); return; }
+  drumsInited = true;
+
+  var today = new Date();
+  drumState.day   = today.getDate();
+  drumState.month = today.getMonth();
+  drumState.sh    = 9; drumState.sm = 0;
+  drumState.dh    = 8; drumState.dm = 0;
+
+  buildDrum('dlist-day',  'drum-day',  Array.from({length:31},function(_,i){return String(i+1).padStart(2,'0');}), drumState.day-1, function(i){ drumState.day=i+1; updateManPreview(); });
+  buildDrum('dlist-month','drum-month',['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],   drumState.month,  function(i){ drumState.month=i;   updateManPreview(); });
+  buildDrum('dlist-sh',   'drum-sh',   Array.from({length:24},function(_,i){return String(i).padStart(2,'0');}),  drumState.sh,     function(i){ drumState.sh=i;    updateManPreview(); });
+  buildDrum('dlist-sm',   'drum-sm',   Array.from({length:12},function(_,i){return String(i*5).padStart(2,'0');}),drumState.sm/5,   function(i){ drumState.sm=i*5; updateManPreview(); });
+  buildDrum('dlist-dh',   'drum-dh',   Array.from({length:25},function(_,i){return String(i)+'h';}),              drumState.dh,     function(i){ drumState.dh=i;    updateManPreview(); });
+  buildDrum('dlist-dm',   'drum-dm',   Array.from({length:12},function(_,i){return String(i*5).padStart(2,'0');}),drumState.dm/5,   function(i){ drumState.dm=i*5; updateManPreview(); });
+
+  updateManPreview();
+}
+
+function buildDrum(listId, drumId, items, initIdx, onChange){
+  var list  = document.getElementById(listId);
+  var drum  = document.getElementById(drumId);
+  var itemH = 40;
+  var visItems = 3; // items visible (top, selected, bottom)
+  var selIdx = initIdx;
+
+  function renderList(){
+    list.innerHTML = '';
+    items.forEach(function(val, i){
+      var el = document.createElement('div');
+      el.className = 'drum-item' + (i === selIdx ? ' selected' : '');
+      el.textContent = val;
+      list.appendChild(el);
+    });
+    // Position so selected item is in the centre slot
+    var offset = itemH - selIdx * itemH; // centre = itemH (1 item from top)
+    list.style.transform = 'translateY(' + offset + 'px)';
+  }
+
+  function snapTo(idx){
+    selIdx = Math.max(0, Math.min(items.length-1, idx));
+    renderList();
+    onChange(selIdx);
+  }
+
+  renderList();
+
+  // Touch / mouse drag
+  var startY = 0, startOffset = 0, isDragging = false;
+
+  function getOffset(){ return selIdx * itemH; }
+
+  drum.addEventListener('mousedown', function(e){ isDragging=true; startY=e.clientY; startOffset=getOffset(); e.preventDefault(); });
+  window.addEventListener('mousemove', function(e){
+    if(!isDragging) return;
+    var delta = startY - e.clientY;
+    var newIdx = Math.round((startOffset + delta) / itemH);
+    snapTo(newIdx);
+  });
+  window.addEventListener('mouseup', function(){ isDragging=false; });
+
+  drum.addEventListener('touchstart', function(e){ isDragging=true; startY=e.touches[0].clientY; startOffset=getOffset(); },{passive:true});
+  drum.addEventListener('touchmove', function(e){
+    if(!isDragging) return;
+    var delta = startY - e.touches[0].clientY;
+    var newIdx = Math.round((startOffset + delta) / itemH);
+    snapTo(newIdx);
+    e.preventDefault();
+  },{passive:false});
+  drum.addEventListener('touchend', function(){ isDragging=false; });
+
+  // Click top/bottom half to step
+  drum.addEventListener('click', function(e){
+    var rect = drum.getBoundingClientRect();
+    var relY = e.clientY - rect.top;
+    if(relY < rect.height/2) snapTo(selIdx-1);
+    else snapTo(selIdx+1);
+  });
+}
+
+function updateManPreview(){
+  var box = document.getElementById('man-preview');
+  var day   = drumState.day;
+  var month = drumState.month; // 0-based
+  var sh    = drumState.sh;
+  var sm    = drumState.sm;
+  var dh    = drumState.dh;
+  var dm    = drumState.dm;
+
+  if(dh === 0 && dm === 0){ box.innerHTML = '<span class="err">Duration is 0 — pick at least 1 hour or 5 minutes</span>'; return; }
+
+  var startMin = sh*60 + sm;
+  var durMin   = dh*60 + dm;
+  var endMin   = startMin + durMin;
+
+  var startIso = YEAR + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+  // end date
+  var endDate = new Date(YEAR, month, day + Math.floor(endMin/1440));
+  var endIso  = endDate.getFullYear()+'-'+String(endDate.getMonth()+1).padStart(2,'0')+'-'+String(endDate.getDate()).padStart(2,'0');
+  var endH    = Math.floor(endMin % 1440 / 60);
+  var endM    = endMin % 60;
+
+  var nightNote = endMin >= 1440 ? ' <span style="color:var(--ac);">🌙 crosses midnight → ends ' + String(endH).padStart(2,'0')+':'+String(endM).padStart(2,'0') + ' on ' + endIso + '</span>' : '';
+
+  box.innerHTML =
+    '<span class="ok">Date:</span> ' + String(day).padStart(2,'0') + ' ' + MONTHS_SHORT[month] + ' 2026<br>' +
+    '<span class="ok">Start:</span> ' + String(sh).padStart(2,'0')+':'+String(sm).padStart(2,'0') + '<br>' +
+    '<span class="ok">Duration:</span> ' + dh + 'h ' + (dm ? dm+'m' : '') + '<br>' +
+    '<span class="ok">End:</span> ' + String(endH).padStart(2,'0')+':'+String(endM).padStart(2,'0') + nightNote + '<br>' +
+    '<span style="color:var(--mu);font-size:8px;">Prep block 2h before · Post block 2h after (auto-added)</span>';
+}
+
+function manSubmit(){
+  var day   = drumState.day;
+  var month = drumState.month;
+  var sh    = drumState.sh, sm = drumState.sm;
+  var dh    = drumState.dh, dm = drumState.dm;
+  var dur   = dh*60 + dm;
+  if(dur === 0){ alert('Duration is 0. Please select a duration.'); return; }
+  var iso = YEAR+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  var startMin = sh*60 + sm;
+  addShiftToData(iso, startMin, startMin+dur, 'Shift');
+  saveShifts();
+  renderMonth(curMonth);
+  // quick feedback
+  var box = document.getElementById('man-preview');
+  var prev = box.innerHTML;
+  box.innerHTML = '<span class="ok">✓ Shift added to calendar!</span>';
+  setTimeout(function(){ box.innerHTML = prev; }, 1500);
+}
+
+// ── Quick-text box (Mode 3 shortcut) ──
+function manQuickParse(val){
+  manQuickResult = null;
+  var box = document.getElementById('man-preview');
+  val = val.trim();
+  if(!val){ box.innerHTML = 'Select values above or type here'; return; }
+
+  // Normalise commas to tabs and parse with existing parser
+  var normed = val.split(',').map(function(c){ return c.trim(); }).join('\t');
+  var cells  = normed.split('\t').map(function(c){ return c.trim(); });
+  if(cells.length < 2){ box.innerHTML = '<span class="err">Need at least: date, start time</span>'; return; }
+
+  var dt = parseDate(cells[0]);
+  if(!dt){ box.innerHTML = '<span class="err">Cannot parse date "'+cells[0]+'" — try DD/MM or 12 May</span>'; return; }
+  if(dt.getFullYear() !== YEAR){ box.innerHTML = '<span class="err">Date must be in 2026</span>'; return; }
+
+  var startMin = parseTime(cells[1]);
+  if(startMin === null){ box.innerHTML = '<span class="err">Cannot parse start time "'+cells[1]+'"</span>'; return; }
+
+  var endMin, durMin;
+  var third = cells[2] || '';
+  // Try as duration first, then as end time
+  durMin = parseDuration(third);
+  if(durMin !== null){
+    endMin = startMin + durMin;
+  } else {
+    endMin = parseTime(third);
+    if(endMin !== null){
+      if(endMin < startMin) endMin += 1440;
+      durMin = endMin - startMin;
+    } else if(third){
+      box.innerHTML = '<span class="err">Cannot parse "'+third+'" as duration or end time</span>'; return;
+    } else {
+      box.innerHTML = '<span class="err">Missing duration or end time</span>'; return;
+    }
+  }
+  if(durMin <= 0){ box.innerHTML = '<span class="err">Duration must be positive</span>'; return; }
+
+  var iso = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  manQuickResult = {iso:iso, startMin:startMin, endMin:endMin, durMin:durMin};
+
+  var endH = Math.floor(endMin%1440/60), endM = endMin%60;
+  var nightNote = endMin>=1440 ? ' 🌙 crosses midnight' : '';
+  box.innerHTML =
+    '<span class="ok">✓ ' + String(dt.getDate()).padStart(2,'0') + ' ' + MONTHS_SHORT[dt.getMonth()] + ' 2026</span><br>' +
+    'Start: ' + minutesToTime(startMin) + '  →  End: ' + String(endH).padStart(2,'0')+':'+String(endM).padStart(2,'0') + nightNote + '<br>' +
+    'Duration: ' + Math.floor(durMin/60) + 'h' + (durMin%60?' '+durMin%60+'m':'') + '<br>' +
+    '<span style="color:var(--mu);font-size:8px;">Press Enter or tap ✓ to add</span>';
+}
+
+function manQuickSubmit(){
+  if(!manQuickResult){ alert('No valid shift parsed. Check your input.'); return; }
+  addShiftToData(manQuickResult.iso, manQuickResult.startMin, manQuickResult.endMin, 'Shift');
+  saveShifts();
+  renderMonth(curMonth);
+  var inp = document.getElementById('man-quick-inp');
+  inp.value = '';
+  manQuickResult = null;
+  document.getElementById('man-preview').innerHTML = '<span class="ok">✓ Shift added!</span>';
+  setTimeout(function(){ updateManPreview(); }, 1200);
+}
+
+
+
+
+// ════════════════════════════════════
+// SHARED EVENT STORE — two-way sync with DayFlow
+// Key: 'abhiDesk_shared_events'
+// Schema: [{id, source:'calendar'|'dayflow', dateKey, startMin, endMin, duration, name, color}]
+// Calendar writes 'calendar' source entries; DayFlow writes 'dayflow' source entries.
+// Each panel only renders entries from the OTHER source on its grid.
+// ════════════════════════════════════
+var SHARED_KEY = 'abhiDesk_shared_events';
+var sharedFromDayflow = {}; // { 'YYYY-MM-DD': [{name, startMin, endMin, color}] }
+
+function loadSharedEvents(){
+  try {
+    var raw = localStorage.getItem(SHARED_KEY);
+    if(!raw){ sharedFromDayflow = {}; return; }
+    var all = JSON.parse(raw);
+    sharedFromDayflow = {};
+    all.forEach(function(ev){
+      if(ev.source !== 'dayflow') return; // Calendar only renders DayFlow entries here
+      var dk = ev.dateKey;
+      if(!dk || dk.slice(0,4) !== String(YEAR)) return;
+      var sMin = Math.max(0, Math.min(1439, ev.startMin || 0));
+      var eMin = Math.min(1440, ev.endMin || (sMin + (ev.duration || 60)));
+      if(sMin >= eMin) return;
+      if(!sharedFromDayflow[dk]) sharedFromDayflow[dk] = [];
+      sharedFromDayflow[dk].push({name: ev.name || 'DayFlow', startMin: sMin, endMin: eMin, color: ev.color || null});
+    });
+  } catch(e){ sharedFromDayflow = {}; }
+}
+
+function saveCalendarToShared(){
+  // Write all calendar shifts (type==='shift' only, not prep/post) into shared store
+  try {
+    var raw = localStorage.getItem(SHARED_KEY);
+    var all = [];
+    try { all = JSON.parse(raw) || []; } catch(e){ all = []; }
+    // Remove old calendar entries, re-add from current shiftData
+    all = all.filter(function(ev){ return ev.source !== 'calendar'; });
+    Object.keys(shiftData).forEach(function(dk){
+      (shiftData[dk] || []).forEach(function(b){
+        if(b.type !== 'shift') return; // only export actual shift, not prep/post buffers
+        var rawName = b.label ? b.label.replace(/^⚙ /, '') : 'Shift';
+        // Ensure the name contains "shift" so DayFlow countdown detection works
+        if(!rawName.toLowerCase().includes('shift')) rawName = 'Shift: ' + rawName;
+        all.push({
+          id: 'cal_' + b.id,
+          source: 'calendar',
+          dateKey: dk,
+          startMin: b.startMin,
+          endMin: b.endMin,
+          duration: b.endMin - b.startMin,
+          name: rawName,
+          color: {r:108, g:138, b:255, a:35} // calendar accent blue
+        });
+      });
+    });
+    localStorage.setItem(SHARED_KEY, JSON.stringify(all));
+  } catch(e){ console.warn('[Calendar] saveCalendarToShared failed:', e); }
+}
+
+function renderDayflowBlocks(col, iso){
+  var blocks = sharedFromDayflow[iso] || [];
+  blocks.forEach(function(b){
+    var el = document.createElement('div');
+    el.className = 'shift-block type-dayflow';
+    var top = (b.startMin / 60) * hrPx;
+    var ht  = Math.max(4, ((b.endMin - b.startMin) / 60) * hrPx);
+    el.style.top    = top + 'px';
+    el.style.height = ht + 'px';
+    if(b.color && b.color.r != null){
+      el.style.background  = 'rgba('+b.color.r+','+b.color.g+','+b.color.b+',.22)';
+      el.style.borderColor = 'rgba('+b.color.r+','+b.color.g+','+b.color.b+',.7)';
+      el.style.color       = 'rgba('+b.color.r+','+b.color.g+','+b.color.b+',1)';
+    }
+    el.title = '📅 DayFlow: ' + b.name + ' (' + minutesToTime(b.startMin) + '–' + minutesToTime(b.endMin) + ')';
+    if(ht > 14){ el.textContent = '📅 ' + b.name; }
+    col.appendChild(el);
+  });
+}
+
+// ════════════════════════════════════
+// SHIFT DELETE / CONTEXT MENU
+// ════════════════════════════════════
+var _ctxBlock = null; // {id, iso}
+
+function openCtx(e, block, iso, fromRightClick){
+  _ctxBlock = {id: block.id, iso: iso};
+  var ctx = document.getElementById('shift-ctx');
+  var lbl = document.getElementById('sctx-label');
+  lbl.textContent = block.label + '  ' + minutesToTime(block.startMin) + '–' + minutesToTime(block.endMin);
+
+  // Position near cursor
+  var x = e.clientX, y = e.clientY;
+  ctx.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+  ctx.style.top  = Math.min(y, window.innerHeight - 130) + 'px';
+  ctx.classList.add('open');
+
+  // Close on outside click
+  setTimeout(function(){
+    document.addEventListener('click', closeCtxOutside, {once:true});
+  }, 0);
+}
+
+function closeCtxOutside(e){
+  var ctx = document.getElementById('shift-ctx');
+  if(ctx && !ctx.contains(e.target)) closeCtx();
+}
+
+function closeCtx(){
+  document.getElementById('shift-ctx').classList.remove('open');
+  _ctxBlock = null;
+}
+
+// Extract uid prefix from block id (everything before last '_')
+function uidFromId(blockId){
+  var parts = blockId.split('_');
+  parts.pop(); // remove type suffix
+  return parts.join('_');
+}
+
+// Delete entire shift group (prep + shift + post, across all dates)
+function deleteShiftGroup(){
+  if(!_ctxBlock){ closeCtx(); return; }
+  var uid = uidFromId(_ctxBlock.id);
+  Object.keys(shiftData).forEach(function(iso){
+    shiftData[iso] = shiftData[iso].filter(function(b){
+      return uidFromId(b.id) !== uid;
+    });
+    if(shiftData[iso].length === 0) delete shiftData[iso];
+  });
+  saveShifts();
+  closeCtx();
+  renderMonth(curMonth);
+}
+
+// Delete only this single block (e.g. just the prep block on one day)
+function deleteBlockOnly(){
+  if(!_ctxBlock){ closeCtx(); return; }
+  var id = _ctxBlock.id, iso = _ctxBlock.iso;
+  if(shiftData[iso]){
+    shiftData[iso] = shiftData[iso].filter(function(b){ return b.id !== id; });
+    if(shiftData[iso].length === 0) delete shiftData[iso];
+  }
+  saveShifts();
+  closeCtx();
+  renderMonth(curMonth);
+}
+
+// Close ctx on Escape
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeCtx();
+});
+
+// ════════════════════════════════════
+// INIT
+// ════════════════════════════════════
+loadShifts();
+saveCalendarToShared(); // push existing Calendar shifts into shared store on load
+loadWeather();
+loadSharedEvents(); // read shared event store (DayFlow entries)
+buildMonthNav();
+// Set hrPx so full 24h fits on screen before first render
+// Use setTimeout so layout is done and offsetHeight is reliable
+setTimeout(function(){
+  hrPx = calcFitHrPx();
+  renderMonth(curMonth);
+  fetchWeather(false);
+}, 0);
+
+window.addEventListener('resize', function(){
+  renderMonth(curMonth);
+});
+// Re-read shared store whenever DayFlow or another panel updates it
+window.addEventListener('storage', function(e){
+  if(e.key === 'abhiDesk_shared_events'){
+    loadSharedEvents();
+    renderMonth(curMonth);
+  }
+});
+
+</script>
+<!-- ── SHIFT CONTEXT MENU ── -->
+<div id="shift-ctx">
+  <div class="sctx-hd" id="sctx-label">Shift</div>
+  <div class="sctx-item danger" onclick="deleteShiftGroup()">✕ Delete this shift (+ prep &amp; post)</div>
+  <div class="sctx-sep"></div>
+  <div class="sctx-item" onclick="deleteBlockOnly()">⊟ Delete this block only</div>
+  <div class="sctx-sep"></div>
+  <div class="sctx-item" onclick="closeCtx()">✗ Cancel</div>
+</div>
+</body>
+</html>

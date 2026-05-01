@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Shift Tracker — AbhiDesk</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#171b24;--border:#252b38;
+  --accent:#6c8aff;--accent2:#a78bfa;--gold:#f59e0b;
+  --green:#34d399;--text:#e2e8f0;--muted:#64748b;
+  --red:#ef4444;--font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+.topbar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.topbar h2{font-size:12px;font-weight:700;color:var(--accent);font-family:var(--mono);white-space:nowrap;}
+.tbtn{font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:#1e2330;color:var(--text);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:border-color .15s,color .15s;}
+.tbtn:hover{border-color:var(--accent);color:var(--accent);}
+.tbtn.gold{border-color:rgba(245,158,11,.4);color:var(--gold);background:rgba(245,158,11,.07);}
+.tbtn.gold:hover{background:rgba(245,158,11,.14);border-color:var(--gold);}
+.month-sel{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:#1e2330;color:var(--text);cursor:pointer;font-family:var(--font);}
+.thint{font-size:10px;color:var(--muted);font-family:var(--mono);margin-left:auto;white-space:nowrap;}
+.body-wrap{flex:1;display:flex;overflow:hidden;}
+
+/* FORM */
+.form-panel{width:292px;min-width:292px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px;gap:10px;overflow-y:auto;flex-shrink:0;}
+.form-panel::-webkit-scrollbar{width:4px;}
+.form-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.slbl{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;justify-content:space-between;}
+.lbtn{font-size:9px;color:var(--accent);cursor:pointer;font-weight:600;border:none;background:none;font-family:var(--mono);padding:0;}
+.lbtn:hover{color:var(--accent2);}
+.field input,.field select{background:#1e2330;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;width:100%;transition:border-color .15s;}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.radio-row{display:flex;gap:6px;}
+.ropt{flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#1e2330;cursor:pointer;text-align:center;font-size:11px;font-weight:600;transition:all .15s;user-select:none;}
+.ropt.active{background:rgba(108,138,255,.15);border-color:var(--accent);color:var(--accent);}
+.rbox{background:#1e2330;border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;}
+.rrow{display:flex;justify-content:space-between;align-items:center;}
+.rlbl{font-size:10px;color:var(--muted);font-family:var(--mono);}
+.rval{font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);}
+.rval.big{font-size:20px;color:var(--green);}
+.divider{border:none;border-top:1px solid var(--border);}
+.add-btn{width:100%;padding:10px;background:var(--green);color:#0a1a0f;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;font-family:var(--font);transition:all .2s;}
+.add-btn:hover{opacity:.85;}
+
+/* PREFILL BAR */
+.prefill-bar{background:rgba(108,138,255,.08);border:1px solid rgba(108,138,255,.2);border-radius:6px;padding:7px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.prefill-text{font-size:10px;color:var(--accent2);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.pfbtn{font-size:10px;padding:3px 9px;border-radius:4px;border:1px solid rgba(108,138,255,.35);background:rgba(108,138,255,.1);color:var(--accent);cursor:pointer;font-family:var(--mono);white-space:nowrap;flex-shrink:0;}
+.pfbtn:hover{background:rgba(108,138,255,.2);}
+
+/* VENUE PICKER */
+.venue-wrap{position:relative;}
+.venue-inp{background:#1e2330;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:7px 34px 7px 10px;font-family:var(--font);outline:none;width:100%;transition:border-color .15s;cursor:pointer;}
+.venue-inp:focus,.venue-inp.open{border-color:var(--accent);}
+.venue-inp.picked{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.04);}
+.venue-arrow{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:11px;transition:transform .15s;}
+.venue-inp.open~.venue-arrow{transform:translateY(-50%) rotate(180deg);}
+.vdrop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1a1f2c;border:1px solid var(--accent);border-radius:10px;z-index:300;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden;display:none;flex-direction:column;max-height:260px;}
+.vdrop.open{display:flex;}
+.vsearch-wrap{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.vsearch{width:100%;background:#1e2330;border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;padding:5px 8px;font-family:var(--font);outline:none;}
+.vsearch:focus{border-color:var(--accent);}
+.vscroll{overflow-y:auto;flex:1;}
+.vscroll::-webkit-scrollbar{width:3px;}
+.vscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.vitem{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;transition:background .1s;border-bottom:1px solid rgba(37,43,56,.5);}
+.vitem:last-child{border-bottom:none;}
+.vitem:hover,.vitem.hi{background:rgba(108,138,255,.12);}
+.vitem.sel-cur{background:rgba(52,211,153,.07);}
+.vicon{font-size:15px;flex-shrink:0;}
+.vbody{flex:1;min-width:0;}
+.vname{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vmeta{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:1px;}
+.vdel{background:none;border:none;color:transparent;cursor:pointer;padding:3px 5px;border-radius:4px;font-size:12px;flex-shrink:0;transition:color .1s;}
+.vitem:hover .vdel{color:var(--muted);}
+.vdel:hover{color:var(--red) !important;}
+.vadd{padding:9px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--accent);font-size:11px;font-weight:600;border-top:1px solid var(--border);background:rgba(108,138,255,.05);flex-shrink:0;}
+.vadd:hover{background:rgba(108,138,255,.14);}
+.vempty{padding:14px;text-align:center;font-size:11px;color:var(--muted);font-family:var(--mono);}
+
+/* STATS */
+.stats-row{display:flex;gap:8px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.sc{background:#1e2330;border:1px solid var(--border);border-radius:8px;padding:6px 12px;display:flex;flex-direction:column;gap:1px;min-width:88px;}
+.slb{font-size:9px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;}
+.sv{font-size:16px;font-weight:700;font-family:var(--mono);}
+.svg{color:var(--green);}.sva{color:var(--accent);}.svgold{color:var(--gold);}.sva2{color:var(--accent2);}
+
+/* TABLE */
+.table-area{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.tscroll{flex:1;overflow:auto;padding:0 14px 40px;}
+.tscroll::-webkit-scrollbar{width:5px;height:5px;}
+.tscroll::-webkit-scrollbar-thumb{background:#252b38;border-radius:4px;}
+table.stbl{border-collapse:collapse;font-size:11px;width:100%;min-width:900px;}
+table.stbl thead tr{position:sticky;top:0;z-index:10;}
+table.stbl th{background:#171b24;color:var(--muted);font-family:var(--mono);font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.8px;padding:8px;border-bottom:2px solid var(--border);white-space:nowrap;text-align:left;}
+table.stbl td{border-bottom:1px solid #1a1f2c;padding:6px 8px;vertical-align:middle;}
+table.stbl tr:hover td{background:rgba(255,255,255,.02);}
+.tm{font-size:9px;font-family:var(--mono);font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.8px;}
+.tday{font-size:10px;color:var(--muted);font-family:var(--mono);}
+.tven{font-size:11px;color:var(--text);}
+.thr{font-size:12px;font-weight:700;color:var(--accent);font-family:var(--mono);}
+.tpay{font-size:13px;font-weight:700;color:var(--green);font-family:var(--mono);}
+.ttime{font-size:9px;color:var(--muted);font-family:var(--mono);line-height:1.6;}
+.delbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 5px;opacity:0;transition:opacity .15s;}
+table.stbl tr:hover .delbtn{opacity:1;}
+.delbtn:hover{color:var(--red);}
+.mtr td{background:rgba(108,138,255,.06);color:var(--accent);font-family:var(--mono);font-size:11px;font-weight:700;border-top:1px solid rgba(108,138,255,.2);border-bottom:2px solid var(--border);}
+.empty-st{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--muted);}
+.empty-st .em{font-size:40px;}
+.empty-st p{font-size:12px;font-family:var(--mono);}
+
+/* VENUE MANAGER MODAL */
+.mback{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;}
+.mback.open{display:flex;}
+.modal{background:#171b24;border:1px solid var(--border);border-radius:16px;padding:22px;width:440px;max-height:86vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.7);}
+.modal::-webkit-scrollbar{width:4px;}
+.modal::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.modal h3{font-size:14px;font-weight:700;color:var(--text);}
+.msec{display:flex;flex-direction:column;gap:8px;}
+.msec-title{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.minp{width:100%;background:#1e2330;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;transition:border-color .15s;}
+.minp:focus{border-color:var(--accent);}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.macts{display:flex;gap:8px;justify-content:flex-end;}
+.mbtn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:#1e2330;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);}
+.mbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.mbtn:hover{border-color:var(--accent);}
+.mbtn.primary:hover{background:#5a78f0;}
+.add-vform{display:flex;flex-direction:column;gap:8px;background:#1e2330;border:1px solid var(--border);border-radius:8px;padding:12px;}
+.ipick{display:flex;flex-wrap:wrap;gap:4px;}
+.iopt{width:28px;height:28px;border-radius:5px;border:1px solid var(--border);background:#171b24;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:border-color .1s,background .1s;}
+.iopt:hover{border-color:var(--muted);}
+.iopt.sel{border-color:var(--accent);background:rgba(108,138,255,.15);}
+.vmgr-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;}
+.vmgr-list::-webkit-scrollbar{width:3px;}
+.vmgr-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.vmrow{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#1e2330;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s;}
+.vmrow:hover{border-color:rgba(108,138,255,.3);}
+.vmrow.selected{border-color:var(--green);background:rgba(52,211,153,.05);}
+.vmicon{font-size:16px;flex-shrink:0;}
+.vmbody{flex:1;min-width:0;}
+.vmname{font-size:12px;font-weight:600;}
+.vmmeta{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.vmrate{color:var(--gold);}
+.vmtime{color:var(--accent2);}
+.vmdel{background:none;border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:5px;cursor:pointer;padding:3px 8px;font-size:11px;font-family:var(--mono);transition:background .1s;flex-shrink:0;}
+.vmdel:hover{background:rgba(239,68,68,.1);}
+.vmedit-row{display:flex;gap:6px;margin-top:4px;}
+.vmedit-inp{flex:1;background:#171b24;border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;padding:3px 6px;font-family:var(--font);outline:none;}
+.vmedit-inp:focus{border-color:var(--accent);}
+.vmno{font-size:11px;color:var(--muted);font-family:var(--mono);padding:12px;text-align:center;}
+.badge-sel{display:inline-block;font-size:9px;background:rgba(52,211,153,.15);color:var(--green);border:1px solid rgba(52,211,153,.3);border-radius:3px;padding:0 4px;font-family:var(--mono);margin-left:4px;vertical-align:middle;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h2>// Shift Tracker</h2>
+  <select class="month-sel" id="viewMonth" onchange="renderTable()">
+    <option value="all">All Months</option>
+    <option value="0">January</option><option value="1">February</option>
+    <option value="2">March</option><option value="3">April</option>
+    <option value="4">May</option><option value="5">June</option>
+    <option value="6">July</option><option value="7">August</option>
+    <option value="8">September</option><option value="9">October</option>
+    <option value="10">November</option><option value="11">December</option>
+  </select>
+  <button class="tbtn gold" onclick="openMgr()">🏢 Manage Venues</button>
+  <button class="tbtn" onclick="exportCSV()">↓ Export CSV</button>
+  <button class="tbtn" onclick="copyTable()">⧉ Copy Table</button>
+  <span class="thint">Smart pre-fill · venue library · localStorage</span>
+</div>
+
+<div class="stats-row">
+  <div class="sc"><span class="slb">Shifts</span><span class="sv sva" id="st-n">0</span></div>
+  <div class="sc"><span class="slb">Total Hours</span><span class="sv sva2" id="st-h">0:00:00</span></div>
+  <div class="sc"><span class="slb">Total Earned</span><span class="sv svg" id="st-e">£0.00</span></div>
+  <div class="sc"><span class="slb">Avg / Shift</span><span class="sv svgold" id="st-a">£0.00</span></div>
+  <div class="sc"><span class="slb">Avg Rate</span><span class="sv sva" id="st-r">£0/h</span></div>
+</div>
+
+<div class="body-wrap">
+
+  <!-- FORM -->
+  <div class="form-panel">
+
+    <div class="prefill-bar" id="pfbar" style="display:none">
+      <span class="prefill-text" id="pftext">—</span>
+      <button class="pfbtn" onclick="prefillLast()">Quick Fill</button>
+    </div>
+
+    <div class="slbl">// Add Shift</div>
+
+    <div class="field">
+      <label>Job Date</label>
+      <input type="date" id="f-date"/>
+    </div>
+
+    <div class="field">
+      <label>Venue <button class="lbtn" onclick="openMgr()">+ Manage</button></label>
+      <div class="venue-wrap" id="venueWrap">
+        <input class="venue-inp" id="vDisplay" placeholder="Select or search venue…" autocomplete="off"
+               readonly onclick="toggleDrop()" onkeydown="vKeyNav(event)"/>
+        <span class="venue-arrow" id="vArrow">▾</span>
+        <div class="vdrop" id="vdrop">
+          <div class="vsearch-wrap">
+            <input class="vsearch" id="vsearch" placeholder="Type to search…"
+                   oninput="filterDrop()" onkeydown="vSearchNav(event)"/>
+          </div>
+          <div class="vscroll" id="vscroll"></div>
+          <div class="vadd" onclick="quickAdd()">
+            <span style="font-size:16px">＋</span>
+            <span id="vaddLabel">Add new venue…</span>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="f-venue"/>
+    </div>
+
+    <div class="field">
+      <label>Job Type</label>
+      <input type="text" id="f-job" value="Service"/>
+    </div>
+
+    <div class="field">
+      <label>Employee Name</label>
+      <input type="text" id="f-employee" value="Abhishek Shinde"/>
+    </div>
+
+    <div class="field">
+      <label>Shift Start Time</label>
+      <input type="time" id="f-start"/>
+    </div>
+
+    <div class="field">
+      <label>End by</label>
+      <div class="radio-row">
+        <div class="ropt active" id="opt-et" onclick="setEndMode('et')">End Time</div>
+        <div class="ropt" id="opt-dur" onclick="setEndMode('dur')">Duration</div>
+      </div>
+    </div>
+    <div class="field" id="fld-et">
+      <label>Shift End Time</label>
+      <input type="time" id="f-end" oninput="calc()"/>
+    </div>
+    <div class="field" id="fld-dur" style="display:none">
+      <label>Duration (hrs)</label>
+      <input type="number" id="f-dur" placeholder="8.5" step="0.25" min="0" oninput="calc()"/>
+    </div>
+
+    <div class="field">
+      <label>Rate £/hr</label>
+      <input type="number" id="f-rate" value="14.00" step="0.01" oninput="calc()"/>
+    </div>
+
+    <hr class="divider"/>
+
+    <div class="rbox">
+      <div class="rrow"><span class="rlbl">Hours</span><span class="rval" id="r-hrs">—</span></div>
+      <div class="rrow"><span class="rlbl">Shift End</span><span class="rval" id="r-end" style="font-size:10px">—</span></div>
+      <div class="rrow"><span class="rlbl">Pay This Shift</span><span class="rval big" id="r-pay">£—</span></div>
+    </div>
+
+    <button class="add-btn" id="addBtn" onclick="addShift()">+ Add Shift</button>
+
+    <hr class="divider"/>
+
+    <div class="slbl">// Month Total (view)</div>
+    <div class="rbox">
+      <div class="rrow"><span class="rlbl">Shifts</span><span class="rval sva" id="r-mn">0</span></div>
+      <div class="rrow"><span class="rlbl">Hours</span><span class="rval sva2" id="r-mh">0:00:00</span></div>
+      <div class="rrow"><span class="rlbl">Total Pay</span><span class="rval big" id="r-mp">£0.00</span></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-area">
+    <div class="tscroll">
+      <table class="stbl">
+        <thead><tr>
+          <th>Month</th><th>Date</th><th>Day</th><th>Job</th>
+          <th>Venue</th><th>Employee</th>
+          <th>Rate</th><th>Hours</th>
+          <th>Shift Start</th><th>Shift End</th>
+          <th>Pay</th><th></th>
+        </tr></thead>
+        <tbody id="stbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- VENUE MANAGER MODAL -->
+<div class="mback" id="mback" onclick="if(event.target===this)closeMgr()">
+  <div class="modal">
+    <h3>🏢 Venue Library</h3>
+
+    <div class="msec">
+      <div class="msec-title">Add New Venue</div>
+      <div class="add-vform">
+        <div>
+          <div class="msec-title" style="margin-bottom:6px">Icon</div>
+          <div class="ipick" id="iconPick"></div>
+          <input type="hidden" id="ni-icon" value="🏢"/>
+        </div>
+        <div class="agrid">
+          <div class="field"><label>Venue Name</label><input class="minp" id="ni-name" placeholder="e.g. Platinum Lace" onkeydown="if(event.key==='Enter')addVenue()"/></div>
+          <div class="field"><label>Rate £/h</label><input class="minp" type="number" id="ni-rate" value="14.00" step="0.01"/></div>
+          <div class="field"><label>Default Start</label><input class="minp" type="time" id="ni-start"/></div>
+          <div class="field"><label>Default End</label><input class="minp" type="time" id="ni-end"/></div>
+          <div class="field"><label>Job Type</label><input class="minp" id="ni-job" value="Service"/></div>
+          <div class="field"><label>Employee</label><input class="minp" id="ni-emp" value="Abhishek Shinde"/></div>
+        </div>
+        <button class="mbtn primary" onclick="addVenue()" style="align-self:flex-end">Add Venue</button>
+      </div>
+    </div>
+
+    <div class="msec">
+      <div class="msec-title">Saved Venues (<span id="vcnt">0</span>) — click a row to select it in the form</div>
+      <div class="vmgr-list" id="vmgrList"></div>
+    </div>
+
+    <div class="macts"><button class="mbtn" onclick="closeMgr()">Close</button></div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────────────────────
+const ML  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const ICO = ['🏢','🍸','🍹','🎭','🎪','🎶','🍽️','🏨','🎠','🏟️','🌃','🎰','🍾','🎤','💼','🏛️','🌆','🛎️','🌉','🎻'];
+
+let shifts = [], venues = [], selVId = null, endMode = 'et', dropOpen = false, hiIdx = -1;
+
+try{ shifts = JSON.parse(localStorage.getItem('ad_shifts')||'[]'); }catch(e){}
+try{ venues = JSON.parse(localStorage.getItem('ad_shift_venues')||'[]'); }catch(e){}
+
+// Seed venues from existing shift history if library is empty
+(function(){
+  if(!venues.length && shifts.length){
+    const seen = new Set();
+    shifts.forEach(s => {
+      if(s.venue && !seen.has(s.venue)){
+        seen.add(s.venue);
+        venues.push({id:'v_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),
+          name:s.venue, icon:'🏢', rate:s.rate||14,
+          ds:'', de:'', job:s.job||'Service', emp:s.employee||'Abhishek Shinde'});
+      }
+    });
+    saveV();
+  }
+})();
+
+// ──────────────────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────────────────
+document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+document.getElementById('viewMonth').value = String(new Date().getMonth());
+buildIconPick();
+renderTable();
+showPF();
+calc();
+
+document.addEventListener('click', e => {
+  if(!document.getElementById('venueWrap').contains(e.target) &&
+     !document.getElementById('mback').contains(e.target)) closeDrop();
+});
+document.getElementById('f-start').addEventListener('input', calc);
+document.getElementById('f-date').addEventListener('change', calc);
+
+// ──────────────────────────────────────────────────────────
+// VENUE SAVE / HELPERS
+// ──────────────────────────────────────────────────────────
+function saveV(){ try{localStorage.setItem('ad_shift_venues',JSON.stringify(venues));}catch(e){} }
+function gV(id){ return venues.find(v=>v.id===id); }
+function vShiftCount(id){ return shifts.filter(s=>s.venueId===id).length; }
+function vLastDate(id){
+  const arr=shifts.filter(s=>s.venueId===id).sort((a,b)=>b.date.localeCompare(a.date));
+  return arr.length ? arr[0].date : null;
+}
+
+// ──────────────────────────────────────────────────────────
+// VENUE PICKER
+// ──────────────────────────────────────────────────────────
+function toggleDrop(){
+  dropOpen ? closeDrop() : openDrop();
+}
+function openDrop(){
+  dropOpen = true;
+  document.getElementById('vdrop').classList.add('open');
+  document.getElementById('vDisplay').classList.add('open');
+  document.getElementById('vsearch').value = '';
+  filterDrop();
+  setTimeout(()=>document.getElementById('vsearch').focus(),40);
+}
+function closeDrop(){
+  dropOpen = false;
+  document.getElementById('vdrop').classList.remove('open');
+  document.getElementById('vDisplay').classList.remove('open');
+  hiIdx = -1;
+}
+function filterDrop(){
+  const q = document.getElementById('vsearch').value.toLowerCase();
+  const list = q ? venues.filter(v=>v.name.toLowerCase().includes(q)) : venues;
+  const scroll = document.getElementById('vscroll');
+  scroll.innerHTML = '';
+  hiIdx = -1;
+
+  if(!list.length){
+    scroll.innerHTML = '<div class="vempty">No venues match — click + below</div>';
+  } else {
+    list.forEach((v,i) => {
+      const cnt = vShiftCount(v.id);
+      const ld  = vLastDate(v.id);
+      const el  = document.createElement('div');
+      el.className = 'vitem'+(v.id===selVId?' sel-cur':'');
+      el.dataset.i = i;
+      el.innerHTML =
+        '<span class="vicon">'+v.icon+'</span>'+
+        '<div class="vbody">'+
+          '<div class="vname">'+esc(v.name)+(v.id===selVId?'<span class="badge-sel">✓ selected</span>':'')+'</div>'+
+          '<div class="vmeta">'+
+            (v.ds?'⏱ '+v.ds+(v.de?' → '+v.de:''):'')+
+            (v.rate?' · £'+v.rate+'/h':'')+
+            (cnt?' · '+cnt+' shift'+(cnt!==1?'s':''):'')+
+            (ld?' · last '+MS[new Date(ld).getMonth()]+' '+new Date(ld).getDate():'')+
+          '</div>'+
+        '</div>'+
+        '<button class="vdel" onclick="event.stopPropagation();rmVenue(\''+v.id+'\')">✕</button>';
+      el.addEventListener('click', e=>{ if(!e.target.classList.contains('vdel')) pickV(v.id); });
+      scroll.appendChild(el);
+    });
+  }
+  // Update "add" label
+  const qt = document.getElementById('vsearch').value.trim();
+  document.getElementById('vaddLabel').textContent = qt ? 'Add "'+qt+'" as new venue' : 'Add new venue…';
+}
+function vKeyNav(e){
+  if(e.key==='ArrowDown'||e.key==='Enter') openDrop();
+  if(e.key==='Escape') closeDrop();
+}
+function vSearchNav(e){
+  const items = document.getElementById('vscroll').querySelectorAll('.vitem');
+  if(e.key==='ArrowDown'){ e.preventDefault(); hiIdx=Math.min(hiIdx+1,items.length-1); markHi(items); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); hiIdx=Math.max(hiIdx-1,0); markHi(items); }
+  else if(e.key==='Enter'){ e.preventDefault(); hiIdx>=0&&items[hiIdx]?items[hiIdx].click():quickAdd(); }
+  else if(e.key==='Escape') closeDrop();
+}
+function markHi(items){ items.forEach((el,i)=>el.classList.toggle('hi',i===hiIdx)); }
+
+function pickV(id){
+  selVId = id;
+  const v = gV(id); if(!v) return;
+  document.getElementById('f-venue').value = v.name;
+  document.getElementById('vDisplay').value = v.icon+'  '+v.name;
+  document.getElementById('vDisplay').classList.add('picked');
+  // Auto-fill defaults
+  if(v.rate) document.getElementById('f-rate').value = v.rate;
+  if(v.ds)   document.getElementById('f-start').value = v.ds;
+  if(v.de)   document.getElementById('f-end').value   = v.de;
+  if(v.job)  document.getElementById('f-job').value   = v.job;
+  if(v.emp)  document.getElementById('f-employee').value = v.emp;
+  calc();
+  closeDrop();
+}
+
+function quickAdd(){
+  const q = document.getElementById('vsearch').value.trim();
+  if(!q){ openMgr(); return; }
+  const id = 'v_'+Date.now();
+  venues.push({ id, name:q, icon:'🏢',
+    rate: parseFloat(document.getElementById('f-rate').value)||14,
+    ds: document.getElementById('f-start').value||'',
+    de: document.getElementById('f-end').value||'',
+    job: document.getElementById('f-job').value.trim()||'Service',
+    emp: document.getElementById('f-employee').value.trim()||'Abhishek Shinde'
+  });
+  saveV();
+  pickV(id);
+}
+
+// ──────────────────────────────────────────────────────────
+// VENUE CRUD
+// ──────────────────────────────────────────────────────────
+function addVenue(){
+  const name = document.getElementById('ni-name').value.trim();
+  if(!name){ alert('Enter a venue name.'); return; }
+  const id = 'v_'+Date.now();
+  venues.push({id, name,
+    icon: document.getElementById('ni-icon').value,
+    rate: parseFloat(document.getElementById('ni-rate').value)||14,
+    ds:   document.getElementById('ni-start').value||'',
+    de:   document.getElementById('ni-end').value||'',
+    job:  document.getElementById('ni-job').value.trim()||'Service',
+    emp:  document.getElementById('ni-emp').value.trim()||'Abhishek Shinde'
+  });
+  saveV(); renderMgrList();
+  document.getElementById('ni-name').value='';
+  document.getElementById('ni-start').value='';
+  document.getElementById('ni-end').value='';
+  document.getElementById('ni-name').focus();
+}
+
+function rmVenue(id){
+  if(!confirm('Remove this venue?')) return;
+  venues = venues.filter(v=>v.id!==id);
+  saveV(); renderMgrList();
+  if(selVId===id){
+    selVId=null;
+    document.getElementById('f-venue').value='';
+    document.getElementById('vDisplay').value='';
+    document.getElementById('vDisplay').classList.remove('picked');
+  }
+  filterDrop();
+}
+
+// ──────────────────────────────────────────────────────────
+// MANAGER MODAL
+// ──────────────────────────────────────────────────────────
+function openMgr(){
+  closeDrop();
+  document.getElementById('mback').classList.add('open');
+  renderMgrList();
+  setTimeout(()=>document.getElementById('ni-name').focus(),80);
+}
+function closeMgr(){ document.getElementById('mback').classList.remove('open'); }
+
+function renderMgrList(){
+  document.getElementById('vcnt').textContent = venues.length;
+  const list = document.getElementById('vmgrList');
+  list.innerHTML='';
+  if(!venues.length){ list.innerHTML='<div class="vmno">No venues yet. Add one above.</div>'; return; }
+  venues.forEach(v=>{
+    const cnt = vShiftCount(v.id), ld = vLastDate(v.id);
+    const row = document.createElement('div');
+    row.className = 'vmrow'+(v.id===selVId?' selected':'');
+    row.title = 'Click to select this venue in the form';
+    row.innerHTML =
+      '<span class="vmicon" title="Click to cycle icon" onclick="cycleIcon(\''+v.id+'\',this)">'+v.icon+'</span>'+
+      '<div class="vmbody">'+
+        '<div class="vmname">'+esc(v.name)+(v.id===selVId?'<span class="badge-sel">selected</span>':'')+'</div>'+
+        '<div class="vmmeta">'+
+          '<span class="vmrate">£'+v.rate+'/h</span>'+
+          (v.ds?' · <span class="vmtime">'+v.ds+(v.de?' → '+v.de:'')+'</span>':'')+
+          ' · '+cnt+' shift'+(cnt!==1?'s':'')+
+          (ld?' · last '+MS[new Date(ld).getMonth()]+' '+new Date(ld).getDate():'')+
+        '</div>'+
+        // inline rate edit
+        '<div class="vmedit-row">'+
+          '<input class="vmedit-inp" type="number" value="'+v.rate+'" step="0.01" placeholder="Rate" title="Edit rate" onchange="editVRate(\''+v.id+'\',this.value)"/>'+
+          '<input class="vmedit-inp" type="time" value="'+(v.ds||'')+'" title="Default start" onchange="editVTime(\''+v.id+'\',\'ds\',this.value)"/>'+
+          '<input class="vmedit-inp" type="time" value="'+(v.de||'')+'" title="Default end" onchange="editVTime(\''+v.id+'\',\'de\',this.value)"/>'+
+        '</div>'+
+      '</div>'+
+      '<button class="vmdel" onclick="event.stopPropagation();rmVenue(\''+v.id+'\')">Remove</button>';
+    row.addEventListener('click', e=>{
+      if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return;
+      pickV(v.id); closeMgr();
+    });
+    list.appendChild(row);
+  });
+}
+
+function cycleIcon(id,el){
+  const v=gV(id); if(!v) return;
+  v.icon = ICO[(ICO.indexOf(v.icon)+1)%ICO.length];
+  el.textContent = v.icon; saveV();
+}
+function editVRate(id,val){
+  const v=gV(id); if(!v) return;
+  v.rate = parseFloat(val)||14; saveV();
+}
+function editVTime(id,key,val){
+  const v=gV(id); if(!v) return;
+  v[key]=val; saveV();
+}
+
+function buildIconPick(){
+  const p=document.getElementById('iconPick');
+  ICO.forEach(em=>{
+    const b=document.createElement('div');
+    b.className='iopt'+(em==='🏢'?' sel':'');
+    b.textContent=em;
+    b.onclick=function(){
+      document.querySelectorAll('.iopt').forEach(x=>x.classList.remove('sel'));
+      b.classList.add('sel');
+      document.getElementById('ni-icon').value=em;
+    };
+    p.appendChild(b);
+  });
+}
+
+// ──────────────────────────────────────────────────────────
+// PREFILL
+// ──────────────────────────────────────────────────────────
+function showPF(){
+  if(!shifts.length){ document.getElementById('pfbar').style.display='none'; return; }
+  const last=shifts[shifts.length-1];
+  const d=new Date(last.date);
+  document.getElementById('pftext').textContent =
+    '↩ '+MS[d.getMonth()]+' '+pad2(d.getDate())+' · '+(last.venue||'?')+' · £'+last.pay.toFixed(2);
+  document.getElementById('pfbar').style.display='flex';
+}
+
+function prefillLast(){
+  if(!shifts.length) return;
+  const last=shifts[shifts.length-1];
+  // Move date forward 1 day
+  const nd=new Date(last.date); nd.setDate(nd.getDate()+1);
+  document.getElementById('f-date').value=nd.toISOString().slice(0,10);
+  if(last.venueId && gV(last.venueId)) pickV(last.venueId);
+  else{ document.getElementById('f-venue').value=last.venue||''; document.getElementById('vDisplay').value=last.venue||''; }
+  document.getElementById('f-job').value=last.job||'Service';
+  document.getElementById('f-employee').value=last.employee||'Abhishek Shinde';
+  document.getElementById('f-rate').value=last.rate||14;
+  if(last.startIso){ const s=new Date(last.startIso); document.getElementById('f-start').value=pad2(s.getHours())+':'+pad2(s.getMinutes()); }
+  if(last.endIso && endMode==='et'){ const e=new Date(last.endIso); document.getElementById('f-end').value=pad2(e.getHours())+':'+pad2(e.getMinutes()); }
+  calc();
+}
+
+// ──────────────────────────────────────────────────────────
+// END MODE
+// ──────────────────────────────────────────────────────────
+function setEndMode(m){
+  endMode=m;
+  document.getElementById('opt-et').classList.toggle('active',m==='et');
+  document.getElementById('opt-dur').classList.toggle('active',m==='dur');
+  document.getElementById('fld-et').style.display=m==='et'?'':'none';
+  document.getElementById('fld-dur').style.display=m==='dur'?'':'none';
+  calc();
+}
+
+// ──────────────────────────────────────────────────────────
+// LIVE CALC
+// ──────────────────────────────────────────────────────────
+function calc(){
+  const sv=document.getElementById('f-start').value;
+  const rate=parseFloat(document.getElementById('f-rate').value)||0;
+  let hours=0, endDt=null;
+  if(sv){
+    if(endMode==='et'){
+      const ev=document.getElementById('f-end').value;
+      if(ev){
+        const [sh,sm]=sv.split(':').map(Number), [eh,em]=ev.split(':').map(Number);
+        let diff=(eh*60+em)-(sh*60+sm); if(diff<=0)diff+=24*60;
+        hours=diff/60;
+        const dv=document.getElementById('f-date').value;
+        if(dv){ const b=new Date(dv+'T'+sv+':00'); endDt=new Date(b.getTime()+hours*3600000); }
+      }
+    } else {
+      hours=parseFloat(document.getElementById('f-dur').value)||0;
+      if(hours>0){ const dv=document.getElementById('f-date').value; if(dv){ const b=new Date(dv+'T'+sv+':00'); endDt=new Date(b.getTime()+hours*3600000); } }
+    }
+  }
+  const pay=hours*rate;
+  document.getElementById('r-hrs').textContent=hours>0?fmtHM(hours):'—';
+  document.getElementById('r-end').textContent=endDt?fmtLong(endDt):'—';
+  document.getElementById('r-pay').textContent=pay>0?'£'+pay.toFixed(2):'£—';
+}
+
+// ──────────────────────────────────────────────────────────
+// ADD SHIFT
+// ──────────────────────────────────────────────────────────
+function addShift(){
+  const dv=document.getElementById('f-date').value;
+  const sv=document.getElementById('f-start').value;
+  const vname=document.getElementById('f-venue').value.trim() ||
+               document.getElementById('vDisplay').value.replace(/^\S+\s{2}/,'').trim();
+  const job=document.getElementById('f-job').value.trim()||'Service';
+  const emp=document.getElementById('f-employee').value.trim()||'Abhishek Shinde';
+  const rate=parseFloat(document.getElementById('f-rate').value)||14;
+  if(!dv||!sv){ alert('Set date and start time.'); return; }
+  if(!vname){ alert('Select or enter a venue.'); return; }
+  let hours=0, endDt=null;
+  if(endMode==='et'){
+    const ev=document.getElementById('f-end').value;
+    if(!ev){ alert('Set end time.'); return; }
+    const [sh,sm]=sv.split(':').map(Number), [eh,em]=ev.split(':').map(Number);
+    let diff=(eh*60+em)-(sh*60+sm); if(diff<=0)diff+=24*60;
+    hours=diff/60; const b=new Date(dv+'T'+sv+':00'); endDt=new Date(b.getTime()+hours*3600000);
+  } else {
+    hours=parseFloat(document.getElementById('f-dur').value)||0;
+    if(hours<=0){ alert('Enter duration.'); return; }
+    const b=new Date(dv+'T'+sv+':00'); endDt=new Date(b.getTime()+hours*3600000);
+  }
+  const pay=+(hours*rate).toFixed(2);
+  const startDt=new Date(dv+'T'+sv+':00');
+
+  // Update venue defaults to reflect this shift
+  if(selVId){ const v=gV(selVId); if(v){ v.ds=pad2(startDt.getHours())+':'+pad2(startDt.getMinutes()); v.de=pad2(endDt.getHours())+':'+pad2(endDt.getMinutes()); v.rate=rate; saveV(); } }
+
+  shifts.push({ id:'sh_'+Date.now(), date:dv, venue:vname, venueId:selVId||null, job, employee:emp, rate, hours:+hours.toFixed(4), startIso:startDt.toISOString(), endIso:endDt.toISOString(), pay });
+  shifts.sort((a,b)=>a.startIso.localeCompare(b.startIso));
+  saveS(); renderTable(); showPF(); broadcastJD();
+
+  const btn=document.getElementById('addBtn');
+  btn.textContent='✓ Added!'; btn.style.background='var(--accent)';
+  setTimeout(()=>{ btn.textContent='+ Add Shift'; btn.style.background=''; },1500);
+}
+
+// ──────────────────────────────────────────────────────────
+// DELETE
+// ──────────────────────────────────────────────────────────
+function delShift(id){
+  if(!confirm('Delete this shift?')) return;
+  shifts=shifts.filter(s=>s.id!==id); saveS(); renderTable(); showPF(); broadcastJD();
+}
+
+// ──────────────────────────────────────────────────────────
+// SAVE / BROADCAST
+// ──────────────────────────────────────────────────────────
+function saveS(){ try{localStorage.setItem('ad_shifts',JSON.stringify(shifts));}catch(e){} }
+function broadcastJD(){
+  const dates=[...new Set(shifts.map(s=>s.date))];
+  try{ if(window.parent&&window.parent!==window) window.parent.postMessage({type:'shifts_updated',jobDates:dates},'*'); }catch(e){}
+}
+
+// ──────────────────────────────────────────────────────────
+// RENDER TABLE
+// ──────────────────────────────────────────────────────────
+function renderTable(){
+  const fm=document.getElementById('viewMonth').value;
+  let vis=shifts;
+  if(fm!=='all'){ const m=parseInt(fm); vis=shifts.filter(s=>new Date(s.date).getMonth()===m); }
+  const bm={};
+  vis.forEach(s=>{ const m=new Date(s.date).getMonth(); if(!bm[m])bm[m]=[]; bm[m].push(s); });
+  const tb=document.getElementById('stbody'); tb.innerHTML='';
+  if(!vis.length){
+    const tr=document.createElement('tr'), td=document.createElement('td');
+    td.colSpan=12; td.innerHTML='<div class="empty-st"><span class="em">💼</span><p>No shifts — select a venue and add your first!</p></div>';
+    tr.appendChild(td); tb.appendChild(tr);
+  } else {
+    Object.keys(bm).sort((a,b)=>+a-+b).forEach(mi=>{
+      const ms=bm[mi], tp=ms.reduce((s,sh)=>s+sh.pay,0), th=ms.reduce((s,sh)=>s+sh.hours,0);
+      ms.forEach(s=>{
+        const d=new Date(s.date), sd=new Date(s.startIso), ed=new Date(s.endIso);
+        const vObj=gV(s.venueId);
+        const tr=document.createElement('tr');
+        tr.innerHTML=
+          '<td><span class="tm">'+MS[d.getMonth()]+'</span></td>'+
+          '<td>'+pad2(d.getDate())+'/'+MS[d.getMonth()]+'</td>'+
+          '<td><span class="tday">'+DS[d.getDay()]+'</span></td>'+
+          '<td>'+esc(s.job)+'</td>'+
+          '<td><span class="tven">'+(vObj?vObj.icon+' ':'')+esc(s.venue)+'</span></td>'+
+          '<td>'+esc(s.employee)+'</td>'+
+          '<td>£'+s.rate.toFixed(2)+'</td>'+
+          '<td><span class="thr">'+fmtHM(s.hours)+'</span></td>'+
+          '<td><span class="ttime">'+fmtLong(sd)+'</span></td>'+
+          '<td><span class="ttime">'+fmtLong(ed)+'</span></td>'+
+          '<td><span class="tpay">£'+s.pay.toFixed(2)+'</span></td>'+
+          '<td><button class="delbtn" onclick="delShift(\''+s.id+'\')">✕</button></td>';
+        tb.appendChild(tr);
+      });
+      const tt=document.createElement('tr'); tt.className='mtr';
+      tt.innerHTML='<td colspan="5" style="color:var(--accent2);font-size:10px">'+ML[mi]+' — '+ms.length+' shift'+(ms.length!==1?'s':'')+'</td><td colspan="2">TOTAL</td><td>'+fmtHM(th)+'</td><td colspan="2"></td><td>£'+tp.toFixed(2)+'</td><td></td>';
+      tb.appendChild(tt);
+    });
+  }
+  updStats(vis);
+}
+
+function updStats(vis){
+  const tp=vis.reduce((s,sh)=>s+sh.pay,0), th=vis.reduce((s,sh)=>s+sh.hours,0);
+  const avg=vis.length?tp/vis.length:0, ar=th>0?tp/th:0;
+  document.getElementById('st-n').textContent=vis.length;
+  document.getElementById('st-h').textContent=fmtHM(th);
+  document.getElementById('st-e').textContent='£'+tp.toFixed(2);
+  document.getElementById('st-a').textContent='£'+avg.toFixed(2);
+  document.getElementById('st-r').textContent='£'+ar.toFixed(2)+'/h';
+  document.getElementById('r-mn').textContent=vis.length;
+  document.getElementById('r-mh').textContent=fmtHM(th);
+  document.getElementById('r-mp').textContent='£'+tp.toFixed(2);
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORT
+// ──────────────────────────────────────────────────────────
+function exportCSV(){
+  const rows=[['Month','Date','Day','Job','Venue','Employee','Paid','Pay Rate','Hours','Shift Start','Shift End']];
+  const bm={}; shifts.forEach(s=>{const m=new Date(s.date).getMonth();if(!bm[m])bm[m]=[];bm[m].push(s);});
+  Object.keys(bm).sort((a,b)=>+a-+b).forEach(mi=>{
+    let tp=0,th=0;
+    bm[mi].forEach(s=>{const d=new Date(s.date);rows.push([MS[d.getMonth()],pad2(d.getDate())+'/'+MS[d.getMonth()],DS[d.getDay()],s.job,s.venue,s.employee,'£'+s.pay.toFixed(2),s.rate,fmtHM(s.hours),fmtLong(new Date(s.startIso)),fmtLong(new Date(s.endIso))]);tp+=s.pay;th+=s.hours;});
+    rows.push(['','','','','','TOTAL','£'+tp.toFixed(2),'',fmtHM(th),'','']);
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join('\t')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/plain'})); a.download='AbhiDesk_Shifts.tsv'; a.click();
+}
+function copyTable(){
+  const lines=['Month\tDate\tDay\tJob\tVenue\tEmployee\tPaid\tPay Rate\tHours\tShift Start\tShift End'];
+  const bm={}; shifts.forEach(s=>{const m=new Date(s.date).getMonth();if(!bm[m])bm[m]=[];bm[m].push(s);});
+  Object.keys(bm).sort((a,b)=>+a-+b).forEach(mi=>{
+    let tp=0,th=0;
+    bm[mi].forEach(s=>{const d=new Date(s.date);lines.push([MS[d.getMonth()],' '+pad2(d.getDate())+'/'+MS[d.getMonth()],' '+DS[d.getDay()],s.job,s.venue,s.employee,'£'+s.pay.toFixed(2),s.rate,fmtHM(s.hours),fmtLong(new Date(s.startIso)),fmtLong(new Date(s.endIso))].join('\t'));tp+=s.pay;th+=s.hours;});
+    lines.push('\t\t\t\t\tTOTAL\t£'+tp.toFixed(2)+'\t\t'+fmtHM(th)+'\t\t');
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>alert('✓ Copied! Paste into your spreadsheet.')).catch(()=>alert('Copy failed — use Export CSV.'));
+}
+
+// ──────────────────────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────────────────────
+function pad2(n){ return String(n).padStart(2,'0'); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtHM(h){ const t=Math.round(h*60); return Math.floor(t/60)+':'+pad2(t%60)+':00'; }
+function fmtLong(dt){
+  const h12=dt.getHours()%12||12, ampm=dt.getHours()<12?'AM':'PM';
+  return DS[dt.getDay()]+', '+ML[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear()+', '+h12+':'+pad2(dt.getMinutes())+': '+ampm;
+}
+</script>
+</body>
+</html>
