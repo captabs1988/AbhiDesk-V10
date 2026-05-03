@@ -690,13 +690,15 @@ TABS.forEach(function(id){var v=localStorage.getItem('adlbl_'+id);if(v){var el=d
 // ════════════════════════════════════════════════════════
 // PERSISTENT PANEL DELETE
 // ════════════════════════════════════════════════════════
-var _hidden=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
+var _hidden=JSON.parse(localStorage.getItem('ad_hidden')||'[]').filter(function(t){return t!=='settings';});
+localStorage.setItem('ad_hidden',JSON.stringify(_hidden));
 
 function _applyHidden(){
   var pidMap={tracker:'tracker-panel',pledge:'pledge-panel',sheet:'sheet-panel',
               dayflow:'panel-dayflow',abhiplanner:'panel-abhiplanner',codetrack:'panel-codetrack',
               breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings',help:'panel-help'};
   _hidden.forEach(function(tid){
+    if(tid==='settings')return; // Settings must never be hidden, otherwise user can get locked out
     var te=document.getElementById('tab-'+tid);
     if(te)te.style.cssText='display:none!important;';
     var pid=pidMap[tid]||('panel-'+tid);
@@ -715,7 +717,7 @@ function deletePanel(){
   var pw=prompt('Password:\n\n  123456');
   if(pw===null)return;
   if(pw.trim()!=='123456'){alert('Wrong password.');return;}
-  var visible=TABS.filter(function(t){return !_hidden.includes(t);});
+  var visible=TABS.filter(function(t){return t!=='settings'&&!_hidden.includes(t);});
   if(!visible.length){alert('No panels to delete.');return;}
   var list=visible.map(function(t,i){
     var lbl=document.getElementById('lbl-'+t);
@@ -1781,14 +1783,36 @@ window._fitlogRender=function(){buildFitLog();flUpdateStats();setTimeout(functio
 // ════════════════════════════════════════════════════════
 (function(){
 var PM={tracker:{icon:'📊',def:'2026 Daily Log'},pledge:{icon:'🔥',def:'Pledge'},sheet:{icon:'📋',def:'Checklist Sheet'},dayflow:{icon:'📅',def:'DayFlow'},abhiplanner:{icon:'🗓️',def:'Abhi Planner'},codetrack:{icon:'💻',def:'Code Tracker'},breathe:{icon:'🫁',def:'Breathe'},znf:{icon:'✈',def:'Zero Noise Flight'},vanity:{icon:'💪',def:'Vanity'},fitlog:{icon:'🏃',def:'Fit Log'},calendar:{icon:'📅',def:'Calendar'},shifts:{icon:'💼',def:'Shift Tracker'},settings:{icon:'⚙️',def:'Settings'}};
-function stGetOrder(){try{var o=JSON.parse(localStorage.getItem('ad_panel_order')||'null');if(o&&o.length)return o;}catch(e){}return ['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts','settings'];}
+function stDefaultOrder(){return ['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts','settings'];}
+function stGetOrder(){
+  var def=stDefaultOrder();
+  try{
+    var saved=JSON.parse(localStorage.getItem('ad_panel_order')||'null');
+    if(saved&&saved.length){
+      var clean=[];
+      saved.forEach(function(tid){if(def.includes(tid)&&!clean.includes(tid))clean.push(tid);});
+      def.forEach(function(tid){if(!clean.includes(tid))clean.push(tid);});
+      if(JSON.stringify(clean)!==JSON.stringify(saved))stSaveOrder(clean);
+      return clean;
+    }
+  }catch(e){}
+  return def;
+}
 function stSaveOrder(order){localStorage.setItem('ad_panel_order',JSON.stringify(order));}
 function buildSettings(){var panel=document.getElementById('panel-settings');panel.innerHTML='<div class="st-toolbar"><h2>\u2699\ufe0f // Settings</h2></div><div class="st-wrap"><div class="st-inner" id="st-inner"></div></div>';stRender();}
 function stRender(){
   var inner=document.getElementById('st-inner');if(!inner)return;
   var order=stGetOrder();var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
   var html='<div class="st-section"><div class="st-section-title">\ud83d\udd32 Panel Visibility &amp; Order</div><div class="st-hint">\u283f Drag rows to reorder &middot; Toggle to show/hide &middot; \u270e Rename tab label</div><div class="st-panel-list" id="st-panel-list">';
-  order.forEach(function(tid){var meta=PM[tid]||{icon:'\ud83d\udcc4',def:tid};var lbl=localStorage.getItem('adlbl_'+tid)||meta.def;var vis=!hl.includes(tid);if(tid==='settings'){html+='<div class="st-panel-row" data-tid="'+tid+'"><span class="st-panel-drag">\u283f</span><span class="st-panel-name">'+meta.icon+' <span id="st-lbl-'+tid+'">'+lbl+'</span></span><button class="st-panel-rename" onclick="stRename(\''+tid+'\')"><span>\u270e</span> Rename</button><span style="font-size:9px;color:var(--muted);font-family:\'JetBrains Mono\',monospace;padding:0 6px;">\ud83d\udd12 always visible</span></div>';}else{html+='<div class="st-panel-row" data-tid="'+tid+'"><span class="st-panel-drag">\u283f</span><span class="st-panel-name">'+meta.icon+' <span id="st-lbl-'+tid+'">'+lbl+'</span></span><button class="st-panel-rename" onclick="stRename(\''+tid+'\')"><span>\u270e</span> Rename</button><label class="st-panel-toggle"><input type="checkbox" id="st-vis-'+tid+'"'+(vis?' checked':'')+" onchange=\"stToggleVis('"+tid+"',this.checked)\"><span class=\"st-toggle-slider\"></span></label></div>";}});
+  order.forEach(function(tid){
+    var meta=PM[tid]||{icon:'\ud83d\udcc4',def:tid};
+    var lbl=localStorage.getItem('adlbl_'+tid)||meta.def;
+    var vis=!hl.includes(tid);
+    var toggle=(tid==='settings')
+      ? '<span class="st-hint" style="margin-left:auto;font-size:10px;white-space:nowrap">Always visible</span>'
+      : '<label class="st-panel-toggle"><input type="checkbox" id="st-vis-'+tid+'"'+(vis?' checked':'')+' onchange="stToggleVis(\''+tid+'\',this.checked)"><span class="st-toggle-slider"></span></label>';
+    html+='<div class="st-panel-row" data-tid="'+tid+'" draggable="true"><span class="st-panel-drag">\u283f</span><span class="st-panel-name">'+meta.icon+' <span id="st-lbl-'+tid+'">'+lbl+'</span></span><button class="st-panel-rename" onclick="stRename(\''+tid+'\')"><span>\u270e</span> Rename</button>'+toggle+'</div>';
+  });
   html+='</div></div><div class="st-section"><div class="st-section-title">\ud83c\udff7\ufe0f Panel Short Names <span style="font-size:9px;font-weight:400;color:var(--muted)">(AI Reference)</span></div><div class="st-hint" style="margin-bottom:8px">These short names never change \u2014 use them when talking to AI so it always knows which panel you mean, regardless of what you rename the tab.</div><table style="width:100%;border-collapse:collapse;font-family:\'JetBrains Mono\',monospace;font-size:11px;"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border);"><th style="padding:4px 8px;font-weight:600">Short Name</th><th style="padding:4px 8px;font-weight:600">Current Display Name</th><th style="padding:4px 8px;font-weight:600">Panel ID</th></tr></thead><tbody id="st-shortnames-body"></tbody></table></div><div class="st-section"><div class="st-section-title">\ud83d\udd04 Sync</div><button class="st-btn" onclick="AbhiSync.run()">\ud83d\udd04 Sync All Data Now</button><div class="st-hint" style="margin-top:6px">Exports all AbhiDesk data to your sync folder + Google Sheets</div><div style="margin-top:10px"><button class="st-btn" onclick="importFromJsonFiles()">\ud83d\udcc2 Import from JSON Files</button><div class="st-hint" style="margin-top:6px">Pick your saved JSON backup files to restore data into AbhiDesk</div></div><div style="margin-top:10px"><button class="st-btn" onclick="restoreFromSheet()">\u2601\ufe0f Restore from Google Sheets</button><div class="st-hint" style="margin-top:6px">Pull data back from your Google Sheets backend</div></div></div><div class="st-section"><div class="st-section-title">\u26a0\ufe0f Danger Zone</div><button class="st-btn danger" onclick="restoreAllPanels()">\u21ba Restore All Hidden Panels</button></div>';
   inner.innerHTML=html;stWireDrag();stRenderShortNames();
 }
@@ -1803,8 +1827,8 @@ window.stApplyAndSaveOrder=function(){
   if(msg){msg.textContent='✓ Saved!';msg.style.opacity='1';setTimeout(function(){msg.style.opacity='0';},2500);}
 };
 window.stRename=function(tid){var sp=document.getElementById('lbl-'+tid);var st2=document.getElementById('st-lbl-'+tid);if(!sp)return;var orig=sp.textContent;var nv=prompt('Rename "'+orig+'" to:',orig);if(!nv||!nv.trim())return;nv=nv.trim();sp.textContent=nv;if(st2)st2.textContent=nv;localStorage.setItem('adlbl_'+tid,nv);};
-window.stToggleVis=function(tid,visible){var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');if(visible){hl=hl.filter(function(x){return x!==tid;});}else{if(!hl.includes(tid))hl.push(tid);}localStorage.setItem('ad_hidden',JSON.stringify(hl));_hidden=hl;if(visible){var te=document.getElementById('tab-'+tid);if(te)te.style.cssText='';var pid=PANEL[tid]||('panel-'+tid);var pe=document.getElementById(pid);if(pe)pe.style.cssText='';}else{_applyHidden();}};
-var SHORT_ICONS={tracker:'\ud83d\udcca',pledge:'\ud83d\udd25',sheet:'\ud83d\udccb',dayflow:'\ud83d\udcc5',abhiplanner:'\ud83d\uddd3\ufe0f',codetrack:'\ud83d\udcbb',breathe:'\ud83e\udd2b',znf:'\u2708',vanity:'\ud83d\udcaa',fitlog:'\ud83c\udfc3',calendar:'\ud83d\udcc5',settings:'\u2699\ufe0f'};
+window.stToggleVis=function(tid,visible){if(tid==='settings'){var keep=JSON.parse(localStorage.getItem('ad_hidden')||'[]').filter(function(x){return x!=='settings';});localStorage.setItem('ad_hidden',JSON.stringify(keep));_hidden=keep;return;}var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]').filter(function(x){return x!=='settings';});if(visible){hl=hl.filter(function(x){return x!==tid;});}else{if(!hl.includes(tid))hl.push(tid);}localStorage.setItem('ad_hidden',JSON.stringify(hl));_hidden=hl;if(visible){var te=document.getElementById('tab-'+tid);if(te)te.style.cssText='';var pid=PANEL[tid]||('panel-'+tid);var pe=document.getElementById(pid);if(pe)pe.style.cssText='';}else{_applyHidden();}};
+var SHORT_ICONS={tracker:'\ud83d\udcca',pledge:'\ud83d\udd25',sheet:'\ud83d\udccb',dayflow:'\ud83d\udcc5',abhiplanner:'\ud83d\uddd3\ufe0f',codetrack:'\ud83d\udcbb',breathe:'\ud83e\udd2b',znf:'\u2708',vanity:'\ud83d\udcaa',fitlog:'\ud83c\udfc3',calendar:'\ud83d\udcc5',shifts:'\ud83d\udcbc',settings:'\u2699\ufe0f'};
 function stRenderShortNames(){var tbody=document.getElementById('st-shortnames-body');if(!tbody)return;var rows='';var order=stGetOrder();order.forEach(function(tid){var icon=SHORT_ICONS[tid]||'\ud83d\udcc4';var displayName=localStorage.getItem('adlbl_'+tid)||(PM[tid]?PM[tid].def:tid);rows+='<tr style="border-bottom:1px solid rgba(128,128,128,.1);"><td style="padding:5px 8px;"><code style="background:rgba(108,138,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:11px;">'+tid+'</code></td><td style="padding:5px 8px;color:var(--text);">'+icon+' '+displayName+'</td><td style="padding:5px 8px;color:var(--muted);font-size:10px;">panel-'+tid+'</td></tr>';});tbody.innerHTML=rows;}
 function stWireDrag(){
   var list=document.getElementById('st-panel-list');if(!list)return;
