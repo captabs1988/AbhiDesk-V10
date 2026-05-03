@@ -859,16 +859,28 @@ function prodStart(){
   var now=new Date();var key=dk(now);
   var t=pad(now.getHours())+':'+pad(now.getMinutes());
   if(!D[key])D[key]={};D[key].workStart=t;sv();
-  var el=document.getElementById('ws-'+key);
-  if(el){el.value=t;refreshGap(key);}
+  // Update Daily Log work-start input + gap (if rendered)
+  var dlEl=document.getElementById('ws-'+key);
+  if(dlEl){dlEl.value=t;refreshGap(key);}
+  // Update Fit Log work-start input + gap (if rendered)
+  var flEl=document.getElementById('fl-ws-'+key);
+  if(flEl){flEl.value=t;if(typeof flRefreshGap==='function')flRefreshGap(key);}
   var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var dl=DN[now.getDay()]+' '+now.getDate()+' '+MN[now.getMonth()];
-  var toast=document.getElementById('toast');
-  toast.innerHTML='&#10003; Productivity Started!<br><strong style="color:#e2e8f0">'+dl+'</strong><br>'+t;
-  toast.classList.add('show');clearTimeout(window._tt);
-  window._tt=setTimeout(function(){toast.classList.remove('show');},4000);
-  goToday();
+  // Show toast in whichever panel the user is actually looking at
+  var activeTab=document.querySelector('.tab.active');
+  var activeId=activeTab?activeTab.id.replace('tab-',''):'';
+  var toastId=(activeId==='fitlog')?'fl-toast':'toast';
+  var toast=document.getElementById(toastId);
+  if(toast){
+    toast.innerHTML='&#10003; Productivity Started!<br><strong style="color:#e2e8f0">'+dl+'</strong><br>'+t;
+    toast.classList.add('show');clearTimeout(window._tt);
+    window._tt=setTimeout(function(){toast.classList.remove('show');},4000);
+  }
+  // Scroll the active panel's table to today
+  if(activeId==='fitlog'&&typeof flGoToday==='function'){flGoToday();}
+  else if(typeof goToday==='function'){goToday();}
   // send wake time to Abhi Planner panel
   var wakeTime=(D[key]&&D[key].wake)?D[key].wake:'';
   var apFr=document.getElementById('fr-abhiplanner');
