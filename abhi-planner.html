@@ -1163,11 +1163,6 @@ function mkSpacious(iso,idx){
   barf.style.width=Math.min(100,mins/max*100)+'%';
   bar.appendChild(barf);
 
-  // toggles
-  var togs=E('div','day-togs');
-  togs.appendChild(mkTogRow('🏋 Gym (2h)',iso,'gym',gymDays));
-  togs.appendChild(mkTogRow('🍳 Cook (1h)',iso,'cook',cookDays));
-
   dateCol.appendChild(dow);dateCol.appendChild(num);dateCol.appendChild(mon);
   // show wake-up time if set
   var wuLbl=wakeLabel(iso);
@@ -1192,7 +1187,6 @@ function mkSpacious(iso,idx){
       dateCol.appendChild(remEl2);
     }
   }
-  dateCol.appendChild(togs);
   if(isJob){
     var jbEl=E('div','day-hrs');
     jbEl.style.cssText='color:var(--gd);font-weight:800;font-size:9px;letter-spacing:.5px;margin-top:2px;';
