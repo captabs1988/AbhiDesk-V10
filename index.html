@@ -48,11 +48,13 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 .tt-icon{font-size:14px;}
 .tt-lbl{font-size:10px;font-weight:500;letter-spacing:.5px;}
 .tab-bar{display:flex;align-items:stretch;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 8px;gap:2px;flex-wrap:wrap;min-height:48px;overflow:visible;}
+
 .logo{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;padding:0 12px 0 6px;border-right:1px solid var(--border);margin-right:4px;flex-shrink:0;user-select:none;}
 .logo span{color:var(--accent2);}
 .tab{display:flex;align-items:center;gap:6px;padding:0 13px;height:36px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border:none;border-bottom:2px solid transparent;border-top:none;border-left:none;border-right:none;white-space:nowrap;flex-shrink:0;background:none;font-family:'Syne',sans-serif;transition:color .15s,border-color .15s;}
 .tab:hover{color:var(--text);}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
 .panel-area{flex:1;overflow:hidden;position:relative;}
 .panel{position:absolute;inset:0;display:none;}
 .panel.active{display:block;}
@@ -218,6 +220,7 @@ table.tbl input[type=time]:focus{border-bottom-color:var(--accent);background:rg
 <button class="tab" id="tab-calendar" onclick="switchTab('calendar')" ondblclick="renameTab('calendar')"><span>📅</span><span id="lbl-calendar">Calendar</span></button>
 <button class="tab" id="tab-shifts" onclick="switchTab('shifts')" ondblclick="renameTab('shifts')"><span>💼</span><span id="lbl-shifts">Shift Tracker</span></button>
 <button class="tab" id="tab-settings" onclick="switchTab('settings')" ondblclick="renameTab('settings')"><span>⚙️</span><span id="lbl-settings">Settings</span></button>
+<button class="tab" id="tab-help" onclick="switchTab('help')" ondblclick="renameTab('help')"><span>❓</span><span id="lbl-help">Help</span></button>
 <div id="abhisyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0;padding-right:6px;height:36px;">
   <span id="abhisyncStatus" style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;"></span>
   <!-- Folder indicator -->
@@ -368,6 +371,7 @@ table.tbl input[type=time]:focus{border-bottom-color:var(--accent);background:rg
 <div class="panel" id="panel-shifts"><iframe id="fr-shifts" title="Shift Tracker"></iframe></div>
 <div class="panel" id="panel-fitlog"></div>
 <div class="panel" id="panel-settings"></div>
+<div class="panel" id="panel-help"></div>
 <div class="panel active" id="tracker-panel">
 <div class="toolbar">
 <h2>// 2026 Daily Log</h2>
@@ -530,8 +534,8 @@ var APP_URIS = {
 }
 var ISRC=APP_URIS;
 
-var TABS=['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts','settings'];
-var PANEL={tracker:'tracker-panel',pledge:'pledge-panel',sheet:'sheet-panel',dayflow:'panel-dayflow',abhiplanner:'panel-abhiplanner',codetrack:'panel-codetrack',breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings'};
+var TABS=['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts','settings','help'];
+var PANEL={tracker:'tracker-panel',pledge:'pledge-panel',sheet:'sheet-panel',dayflow:'panel-dayflow',abhiplanner:'panel-abhiplanner',codetrack:'panel-codetrack',breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings',help:'panel-help'};
 var loaded={tracker:true,pledge:true,sheet:true};
 
 function switchTab(id){
@@ -551,6 +555,7 @@ function switchTab(id){
   if(id==='znf'&&window._znfRender)window._znfRender();
   // vanity loads as iframe via ISRC
   if(id==='fitlog'&&window._fitlogRender)window._fitlogRender();
+  if(id==='help'&&window._helpRender)window._helpRender();
   if(id==='settings'&&window._settingsRender)window._settingsRender();
 }
 
@@ -690,7 +695,7 @@ var _hidden=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
 function _applyHidden(){
   var pidMap={tracker:'tracker-panel',pledge:'pledge-panel',sheet:'sheet-panel',
               dayflow:'panel-dayflow',abhiplanner:'panel-abhiplanner',codetrack:'panel-codetrack',
-              breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings'};
+              breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings',help:'panel-help'};
   _hidden.forEach(function(tid){
     var te=document.getElementById('tab-'+tid);
     if(te)te.style.cssText='display:none!important;';
@@ -1639,7 +1644,23 @@ document.head.appendChild(st);
 function buildFitLog(){
   var panel=document.getElementById('panel-fitlog');
   if(panel.querySelector('.fl-toolbar'))return;
-  panel.innerHTML='<div class="fl-toolbar"><h2>// Fit Log 2026</h2><select class="tsel" id="fl-rMode" onchange="flSetRMode(this.value)"><option value="5">&#9733; Stars 1-5</option><option value="10"># Score 1-10</option></select><button class="tbtn" onclick="flGoToday()">&#128205; Today</button><span class="thint">Synced with 2026 Daily Log</span></div><div class="fl-t-layout"><div class="fl-sidebar"><span class="sb-title">Quick Actions</span><button class="prod-btn" onclick="prodStart()">&#128640; Productivity<br/>Started!<span class="prod-sub">stamps work start time</span></button><div class="toast" id="fl-toast"></div><hr class="sb-hr"/><span class="sb-title">This Week</span><div class="sb-stat"><span class="s-lbl">Running Days</span><span class="s-val" id="fl-sr">0</span><span class="s-sub">days</span></div><div class="sb-stat"><span class="s-lbl">Avg Rating</span><span class="s-val" id="fl-sa">-</span><span class="s-sub">out of 5</span></div><hr class="sb-hr"/><span class="sb-title">All 2026</span><div class="sb-stat"><span class="s-lbl">Running Total</span><span class="s-val" id="fl-sra">0</span><span class="s-sub">days</span></div><div class="sb-stat"><span class="s-lbl">Days Logged</span><span class="s-val" id="fl-sdl">0</span><span class="s-sub">entries</span></div><hr class="sb-hr"/><span class="sb-title">5K Personal Best</span><div class="sb-stat"><span class="s-lbl">Best Time</span><span class="s-val" id="fl-s5k" style="color:var(--green)">--</span><span class="s-sub">total mins</span></div></div><div class="fl-tscroll"><table class="tbl"><thead><tr><th class="cd">Day / Date</th><th>Sleep Time</th><th>Wake Up</th><th>Work Start</th><th>Gap</th><th style="border-left:2px solid rgba(239,68,68,.5);background:rgba(239,68,68,.07);color:#dc2626;font-weight:800;">⏱ Deep Work<br><span style="font-size:8px;font-weight:700;color:#dc2626;font-family:\'JetBrains Mono\',monospace;letter-spacing:0;">hh:mm</span></th><th style="border-left:2px solid var(--accent);background:rgba(108,138,255,.05)">&#127939; Total Run<br><span style="font-size:8px;font-weight:400;color:var(--muted);font-family:\'JetBrains Mono\',monospace;letter-spacing:0;">mins running only</span></th><th style="background:rgba(108,138,255,.05)">&#127939; 5K Duration<br><span style="font-size:8px;font-weight:400;color:var(--muted);font-family:\'JetBrains Mono\',monospace;letter-spacing:0;">total 5K attempt</span></th><th style="background:rgba(108,138,255,.05)">&#127939; Total Walk/Run<br><span style="font-size:8px;font-weight:400;color:var(--muted);font-family:\'JetBrains Mono\',monospace;letter-spacing:0;">full session (mins)</span></th><th style="background:rgba(108,138,255,.05);border-right:2px solid var(--accent)">&#127939; Run%<br><span style="font-size:8px;font-weight:400;color:var(--muted);font-family:\'JetBrains Mono\',monospace;letter-spacing:0;">ran ÷ total × 100</span></th><th>Day Rating</th><th>Mood</th><th>Slept</th></tr></thead><tbody id="fl-tbody"></tbody></table></div></div>';
+  panel.innerHTML='<div class="fl-toolbar"><h2>// Fit Log 2026</h2><select class="tsel" id="fl-rMode" onchange="flSetRMode(this.value)"><option value="5">&#9733; Stars 1-5</option><option value="10"># Score 1-10</option></select><button class="tbtn" onclick="flGoToday()">&#128205; Today</button><span class="thint">Synced with 2026 Daily Log</span></div><div class="fl-t-layout"><div class="fl-sidebar"><span class="sb-title">Quick Actions</span><button class="prod-btn" onclick="prodStart()">&#128640; Productivity<br/>Started!<span class="prod-sub">stamps work start time</span></button><div class="toast" id="fl-toast"></div><hr class="sb-hr"/><span class="sb-title">This Week</span><div class="sb-stat"><span class="s-lbl">Running Days</span><span class="s-val" id="fl-sr">0</span><span class="s-sub">days</span></div><div class="sb-stat"><span class="s-lbl">Avg Rating</span><span class="s-val" id="fl-sa">-</span><span class="s-sub">out of 5</span></div><hr class="sb-hr"/><span class="sb-title">All 2026</span><div class="sb-stat"><span class="s-lbl">Running Total</span><span class="s-val" id="fl-sra">0</span><span class="s-sub">days</span></div><div class="sb-stat"><span class="s-lbl">Days Logged</span><span class="s-val" id="fl-sdl">0</span><span class="s-sub">entries</span></div><hr class="sb-hr"/><span class="sb-title">5K Personal Best</span><div class="sb-stat"><span class="s-lbl">Best Time</span><span class="s-val" id="fl-s5k" style="color:var(--green)">--</span><span class="s-sub">total mins</span></div></div><div class="fl-tscroll"><table class="tbl"><thead><tr>
+<th class="cd" style="min-width:90px;white-space:nowrap;">Day / Date</th>
+<th style="min-width:95px;white-space:nowrap;">Sleep Time</th>
+<th style="min-width:60px;white-space:nowrap;">Same Day?</th>
+<th style="min-width:95px;white-space:nowrap;">Wake Up</th>
+<th style="min-width:95px;white-space:nowrap;">Work Start</th>
+<th style="min-width:60px;white-space:nowrap;">Gap</th>
+<th style="min-width:80px;white-space:nowrap;border-left:2px solid rgba(239,68,68,.5);background:rgba(239,68,68,.07);color:#dc2626;font-weight:800;">⏱ Deep Work<br><span style="font-size:8px;font-weight:600;font-family:monospace;">hh:mm</span></th>
+<th style="min-width:80px;white-space:nowrap;border-left:2px solid var(--accent);background:rgba(108,138,255,.05)">🏃 Total Run<br><span style="font-size:8px;font-weight:400;color:var(--muted);font-family:monospace;">mins only</span></th>
+<th style="min-width:80px;white-space:nowrap;background:rgba(108,138,255,.05)">🏃 5K Time<br><span style="font-size:8px;font-weight:400;color:var(--muted);font-family:monospace;">total mins</span></th>
+<th style="min-width:80px;white-space:nowrap;background:rgba(108,138,255,.05)">🏃 Walk+Run<br><span style="font-size:8px;font-weight:400;color:var(--muted);font-family:monospace;">session mins</span></th>
+<th style="min-width:60px;white-space:nowrap;background:rgba(108,138,255,.05);border-right:2px solid var(--accent)">Run%</th>
+<th style="min-width:100px;white-space:nowrap;">Rating</th>
+<th style="min-width:90px;white-space:nowrap;">Mood</th>
+<th style="min-width:70px;white-space:nowrap;">Slept</th>
+<th style="min-width:40px;white-space:nowrap;">📝</th>
+</tr></thead><tbody id="fl-tbody"></tbody></table></div></div>';
   flBuildTable();
 }
 var flRMode=5;
@@ -1668,6 +1689,13 @@ function flBuildTable(){
     var tdSl=document.createElement('td'),sli=document.createElement('input');sli.type='time';sli.value=row.sleep||'';sli.id='fl-sl-'+key;
     (function(k){sli.onchange=function(){if(!D[k])D[k]={};D[k].sleep=this.value;sv();var m=document.getElementById('sl-'+k);if(m)m.value=this.value;flRefreshSlept(k);refreshSlept(k);};})(key);
     tdSl.appendChild(sli);tr.appendChild(tdSl);
+    // Same-day sleep toggle
+    var tdSD2=document.createElement('td');tdSD2.style.textAlign='center';
+    var sdCb=document.createElement('input');sdCb.type='checkbox';sdCb.title='Tick if you slept & woke on same calendar date (day shifts)';sdCb.checked=!!(row.sleepSameDay);sdCb.id='fl-ssd-'+key;
+    (function(k){sdCb.onchange=function(){if(!D[k])D[k]={};D[k].sleepSameDay=this.checked;sv();flRefreshSlept(k);refreshSlept(k);};})(key);
+    tdSD2.appendChild(sdCb);
+    var sdLbl=document.createElement('div');sdLbl.style.fontSize='8px';sdLbl.style.color='var(--muted)';sdLbl.style.fontFamily='monospace';sdLbl.textContent='same day';tdSD2.appendChild(sdLbl);
+    tr.appendChild(tdSD2);
     var td1=document.createElement('td'),wi=document.createElement('input');wi.type='time';wi.value=row.wake||'';wi.id='fl-wu-'+key;
     (function(k){wi.onchange=function(){if(!D[k])D[k]={};D[k].wake=this.value;sv();var m=document.getElementById('wu-'+k);if(m)m.value=this.value;flRefreshGap(k);flRefreshSlept(k);refreshGap(k);refreshSlept(k);var t2=new Date();var tk2=dk(t2);if(k===tk2&&this.value){var p=this.value.split(':');var dfFr=document.getElementById('fr-dayflow');if(dfFr&&dfFr.contentWindow){try{dfFr.contentWindow.postMessage({type:'dayflow_kickstart',wakeHH:parseInt(p[0]),wakeMM:parseInt(p[1])},'*');}catch(ex){}}}};})(key);
     td1.appendChild(wi);tr.appendChild(td1);
@@ -1703,6 +1731,30 @@ function flBuildTable(){
     var td9=document.createElement('td');td9.id='fl-rating-'+key;flBuildRating(td9,key,row.rating||0);tr.appendChild(td9);
     var tdMood=document.createElement('td');tdMood.id='fl-mood-'+key;flBuildMood(tdMood,key,row.mood||0);tr.appendChild(tdMood);
     var tdSD=document.createElement('td');tdSD.id='fl-slept-'+key;tdSD.className='sleepdur';tdSD.textContent=slept(row.sleep,row.wake,row.sleepSameDay);tr.appendChild(tdSD);
+    // Notes cell — hidden input revealed by + button
+    var tdNote=document.createElement('td');tdNote.style.whiteSpace='nowrap';tdNote.style.padding='2px 4px';
+    var noteBtn=document.createElement('button');noteBtn.textContent='+';noteBtn.className='tbtn';noteBtn.style.cssText='padding:1px 5px;font-size:10px;border-radius:4px;';
+    var noteInp=document.createElement('input');noteInp.type='text';noteInp.maxLength=1000;noteInp.placeholder='Day note (max 1000 chars)…';
+    noteInp.style.cssText='display:none;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:monospace;min-width:180px;max-width:600px;width:auto;overflow:hidden;';
+    noteInp.value=row.note||'';
+    noteInp.id='fl-note-'+key;
+    (function(k,btn,inp){
+      btn.onclick=function(){
+        var vis=inp.style.display==='none';
+        inp.style.display=vis?'inline-block':'none';
+        btn.textContent=vis?'−':'+';
+        if(vis)inp.focus();
+      };
+      inp.oninput=function(){
+        // grow input width as user types
+        var len=Math.max(180,Math.min(600,this.value.length*7+30));
+        this.style.minWidth=len+'px';
+      };
+      inp.onchange=function(){if(!D[k])D[k]={};D[k].note=this.value;sv();};
+      // Pre-expand if note exists
+      if(row.note){inp.style.display='inline-block';btn.textContent='−';}
+    })(key,noteBtn,noteInp);
+    tdNote.appendChild(noteBtn);tdNote.appendChild(noteInp);tr.appendChild(tdNote);
     tbody.appendChild(tr);
   }
   flUpdateStats();
@@ -1725,170 +1777,35 @@ window._fitlogRender=function(){buildFitLog();flUpdateStats();setTimeout(functio
 // switchTab('vanity') triggers iframe load via ISRC/loaded pattern.
 
 // ════════════════════════════════════════════════════════
-// SETTINGS PANEL
+// SETTINGS PANEL (Request 1)
 // ════════════════════════════════════════════════════════
 (function(){
-var PM={tracker:{icon:'📊',def:'2026 Daily Log'},pledge:{icon:'🔥',def:'Pledge'},sheet:{icon:'📋',def:'Checklist Sheet'},dayflow:{icon:'📅',def:'DayFlow'},abhiplanner:{icon:'🗓️',def:'Abhi Planner'},codetrack:{icon:'💻',def:'Code Tracker'},breathe:{icon:'🫁',def:'Breathe'},znf:{icon:'✈',def:'Zero Noise Flight'},vanity:{icon:'💪',def:'Vanity'},fitlog:{icon:'🏃',def:'Fit Log'},calendar:{icon:'📅',def:'Calendar'},shifts:{icon:'💼',def:'Shift Tracker'}};
-var DEFAULT_ORDER=['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts'];
-function stGetOrder(){try{var o=JSON.parse(localStorage.getItem('ad_panel_order')||'null');if(o&&o.length)return o;}catch(e){}return DEFAULT_ORDER.slice();}
+var PM={tracker:{icon:'📊',def:'2026 Daily Log'},pledge:{icon:'🔥',def:'Pledge'},sheet:{icon:'📋',def:'Checklist Sheet'},dayflow:{icon:'📅',def:'DayFlow'},abhiplanner:{icon:'🗓️',def:'Abhi Planner'},codetrack:{icon:'💻',def:'Code Tracker'},breathe:{icon:'🫁',def:'Breathe'},znf:{icon:'✈',def:'Zero Noise Flight'},vanity:{icon:'💪',def:'Vanity'},fitlog:{icon:'🏃',def:'Fit Log'},calendar:{icon:'📅',def:'Calendar'},shifts:{icon:'💼',def:'Shift Tracker'},settings:{icon:'⚙️',def:'Settings'}};
+function stGetOrder(){try{var o=JSON.parse(localStorage.getItem('ad_panel_order')||'null');if(o&&o.length)return o;}catch(e){}return ['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts','settings'];}
 function stSaveOrder(order){localStorage.setItem('ad_panel_order',JSON.stringify(order));}
-
-function buildSettings(){
-  var panel=document.getElementById('panel-settings');
-  panel.innerHTML='<div class="st-toolbar"><h2>⚙️ // Settings</h2></div><div class="st-wrap"><div class="st-inner" id="st-inner"></div></div>';
-  stRender();
-}
-
+function buildSettings(){var panel=document.getElementById('panel-settings');panel.innerHTML='<div class="st-toolbar"><h2>\u2699\ufe0f // Settings</h2></div><div class="st-wrap"><div class="st-inner" id="st-inner"></div></div>';stRender();}
 function stRender(){
   var inner=document.getElementById('st-inner');if(!inner)return;
-  var order=stGetOrder();
-  var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
-  var folderName=localStorage.getItem('_abhiSyncFolderName')||'';
-
-  var html='';
-
-  // ── PANEL ORDER & VISIBILITY ──
-  html+='<div class="st-section">';
-  html+='<div class="st-section-title">🔢 Panel Order &amp; Visibility</div>';
-  html+='<div class="st-hint">⠿ Drag rows to reorder · Toggle to show/hide · ✎ Rename tab label</div>';
-  html+='<div class="st-panel-list" id="st-panel-list">';
-  order.forEach(function(tid){
-    var meta=PM[tid]||{icon:'📄',def:tid};
-    var lbl=localStorage.getItem('adlbl_'+tid)||meta.def;
-    var vis=!hl.includes(tid);
-    html+='<div class="st-panel-row" draggable="true" data-tid="'+tid+'">';
-    html+='<span class="st-panel-drag">⠿</span>';
-    html+='<span class="st-panel-name">'+meta.icon+' <span id="st-lbl-'+tid+'">'+lbl+'</span></span>';
-    html+='<button class="st-panel-rename" onclick="stRename(\''+tid+'\')">✎ Rename</button>';
-    html+='<label class="st-panel-toggle"><input type="checkbox" id="st-vis-'+tid+'"'+(vis?' checked':'')+" onchange=\"stToggleVis('"+tid+"',this.checked)\"><span class=\"st-toggle-slider\"></span></label>";
-    html+='</div>';
-  });
-  html+='</div>';
-  // Save Order button
-  html+='<div style="margin-top:10px;display:flex;gap:8px;align-items:center;">';
-  html+='<button class="st-btn" id="st-save-order-btn" onclick="stApplyAndSaveOrder()" style="background:rgba(108,138,255,.12);border-color:rgba(108,138,255,.4);color:var(--accent);">💾 Save Tab Order</button>';
-  html+='<span id="st-order-saved-msg" style="font-size:10px;color:var(--green);font-family:\'JetBrains Mono\',monospace;opacity:0;transition:opacity .3s;"></span>';
-  html+='</div>';
-  html+='</div>';
-
-  // ── BACKUP FOLDER ──
-  html+='<div class="st-section">';
-  html+='<div class="st-section-title">📂 Backup Folder</div>';
-  html+='<div class="st-hint" style="margin-bottom:8px">Choose once — all backups will always save here automatically. You only get asked to pick a folder when you change it here.</div>';
-  html+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">';
-  html+='<button class="st-btn" onclick="pickSyncFolder()" style="background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.4);color:#a78bfa;">📂 '+(folderName?'Change Folder: '+folderName:'Pick Backup Folder')+'</button>';
-  if(folderName){
-    html+='<span style="font-size:10px;color:var(--green);font-family:\'JetBrains Mono\',monospace;">✓ '+folderName+' selected</span>';
-  }
-  html+='</div>';
-  html+='<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">';
-  html+='<button class="st-btn" onclick="quickBackup()">⬇ Take Backup Now</button>';
-  html+='<button class="st-btn" onclick="quickRestore()">⬆ Load a Backup</button>';
-  html+='</div>';
-  html+='</div>';
-
-  // ── BACKUP HELP ──
-  html+='<div class="st-section">';
-  html+='<div class="st-section-title">❓ How Backups Work (Plain English)</div>';
-  html+='<div style="display:flex;flex-direction:column;gap:8px;font-size:11px;line-height:1.7;">';
-  html+='<div style="background:rgba(108,138,255,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--accent);">';
-  html+='<b>📦 What is a backup?</b><br>It\'s a single file (like a save file in a game) that stores <em>everything</em> in AbhiDesk — your shifts, fitness log, planner blocks, settings, everything. File is named like:<br><code style="font-size:10px;color:var(--accent2);">AbhiDesk Backup — 14:30 on 01/05/2026.json</code>';
-  html+='</div>';
-  html+='<div style="background:rgba(52,211,153,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--green);">';
-  html+='<b>💾 How to take a backup</b><br>1. First, pick a folder using "Pick Backup Folder" above (only needed once).<br>2. Click "⬇ Take Backup Now" or the "⬇ Backup" button in the top bar.<br>3. Done! It auto-saves to your chosen folder every time.';
-  html+='</div>';
-  html+='<div style="background:rgba(245,158,11,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--gold);">';
-  html+='<b>🔄 How to restore a backup</b><br>1. Click "⬆ Load a Backup" or the "⬆ Restore" button in the top bar.<br>2. If a folder is set, it shows you a list of your backups — pick one.<br>3. If no folder, it opens a file picker — find your .json backup file.<br>4. Page reloads with all your data restored.';
-  html+='</div>';
-  html+='<div style="background:rgba(167,139,250,.07);border-radius:8px;padding:10px 12px;border-left:3px solid var(--accent2);">';
-  html+='<b>📱 Using on another device?</b><br>Take a backup on device 1 → copy the .json file to device 2 → use "⬆ Restore" to load it. Or use the ☁ Load button to pull from Google Sheets if you have that set up.';
-  html+='</div>';
-  html+='</div>';
-  html+='</div>';
-
-  // ── SHORT NAMES ──
-  html+='<div class="st-section">';
-  html+='<div class="st-section-title">🏷️ Panel Short Names <span style="font-size:9px;font-weight:400;color:var(--muted)">(AI Reference)</span></div>';
-  html+='<div class="st-hint" style="margin-bottom:8px">These short names never change — use them when talking to AI so it always knows which panel you mean.</div>';
-  html+='<table style="width:100%;border-collapse:collapse;font-family:\'JetBrains Mono\',monospace;font-size:11px;"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border);"><th style="padding:4px 8px;">Short Name</th><th style="padding:4px 8px;">Display Name</th><th style="padding:4px 8px;font-size:9px;">Panel ID</th></tr></thead><tbody id="st-shortnames-body"></tbody></table>';
-  html+='</div>';
-
-  // ── SYNC ──
-  html+='<div class="st-section">';
-  html+='<div class="st-section-title">🔄 Sync</div>';
-  html+='<button class="st-btn" onclick="AbhiSync.run()">🔄 Sync All Data (Files + Sheets)</button>';
-  html+='<div class="st-hint" style="margin-top:6px">Exports all data to your sync folder + Google Sheets</div>';
-  html+='<div style="margin-top:10px"><button class="st-btn" onclick="importFromJsonFiles()">📂 Import from JSON Files</button><div class="st-hint" style="margin-top:6px">Pick saved JSON backup files to restore specific data</div></div>';
-  html+='<div style="margin-top:10px"><button class="st-btn" onclick="restoreFromSheet()">☁️ Restore from Google Sheets</button><div class="st-hint" style="margin-top:6px">Pull data back from your Google Sheets cloud backup</div></div>';
-  html+='</div>';
-
-  // ── DANGER ZONE ──
-  html+='<div class="st-section"><div class="st-section-title">⚠️ Danger Zone</div><button class="st-btn danger" onclick="restoreAllPanels()">↺ Restore All Hidden Panels</button></div>';
-
-  inner.innerHTML=html;
-  stWireDrag();
-  stRenderShortNames();
+  var order=stGetOrder();var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
+  var html='<div class="st-section"><div class="st-section-title">\ud83d\udd32 Panel Visibility &amp; Order</div><div class="st-hint">\u283f Drag rows to reorder &middot; Toggle to show/hide &middot; \u270e Rename tab label</div><div class="st-panel-list" id="st-panel-list">';
+  order.forEach(function(tid){var meta=PM[tid]||{icon:'\ud83d\udcc4',def:tid};var lbl=localStorage.getItem('adlbl_'+tid)||meta.def;var vis=!hl.includes(tid);var isSettings=(tid==='settings');var visCtrl=isSettings?'<span style="font-size:9px;color:var(--muted);font-family:\'JetBrains Mono\',monospace;padding:0 6px;" title="Settings cannot be hidden">\ud83d\udd12 always visible</span>':'<label class="st-panel-toggle"><input type="checkbox" id="st-vis-'+tid+'"'+(vis?' checked':'')+" onchange=\"stToggleVis('"+tid+"',this.checked)\"><span class=\"st-toggle-slider\"></span></label>";html+='<div class="st-panel-row" data-tid="'+tid+'"><span class="st-panel-drag">\u283f</span><span class="st-panel-name">'+meta.icon+' <span id="st-lbl-'+tid+'">'+lbl+'</span></span><button class="st-panel-rename" onclick="stRename(\''+tid+'\')"><span>\u270e</span> Rename</button>'+visCtrl+'</div>';});
+  html+='</div></div><div class="st-section"><div class="st-section-title">\ud83c\udff7\ufe0f Panel Short Names <span style="font-size:9px;font-weight:400;color:var(--muted)">(AI Reference)</span></div><div class="st-hint" style="margin-bottom:8px">These short names never change \u2014 use them when talking to AI so it always knows which panel you mean, regardless of what you rename the tab.</div><table style="width:100%;border-collapse:collapse;font-family:\'JetBrains Mono\',monospace;font-size:11px;"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border);"><th style="padding:4px 8px;font-weight:600">Short Name</th><th style="padding:4px 8px;font-weight:600">Current Display Name</th><th style="padding:4px 8px;font-weight:600">Panel ID</th></tr></thead><tbody id="st-shortnames-body"></tbody></table></div><div class="st-section"><div class="st-section-title">\ud83d\udd04 Sync</div><button class="st-btn" onclick="AbhiSync.run()">\ud83d\udd04 Sync All Data Now</button><div class="st-hint" style="margin-top:6px">Exports all AbhiDesk data to your sync folder + Google Sheets</div><div style="margin-top:10px"><button class="st-btn" onclick="importFromJsonFiles()">\ud83d\udcc2 Import from JSON Files</button><div class="st-hint" style="margin-top:6px">Pick your saved JSON backup files to restore data into AbhiDesk</div></div><div style="margin-top:10px"><button class="st-btn" onclick="restoreFromSheet()">\u2601\ufe0f Restore from Google Sheets</button><div class="st-hint" style="margin-top:6px">Pull data back from your Google Sheets backend</div></div></div><div class="st-section"><div class="st-section-title">\u26a0\ufe0f Danger Zone</div><button class="st-btn danger" onclick="restoreAllPanels()">\u21ba Restore All Hidden Panels</button></div>';
+  inner.innerHTML=html;stWireDrag();stRenderShortNames();
 }
-
-// Apply order to tab bar AND save to localStorage
 window.stApplyAndSaveOrder=function(){
   var list=document.getElementById('st-panel-list');if(!list)return;
   var order=[].slice.call(list.querySelectorAll('.st-panel-row')).map(function(r){return r.dataset.tid;});
   stSaveOrder(order);
-  // Reorder tab bar DOM
   var tabBar=document.getElementById('tabBar');
   var syncWrap=document.getElementById('abhisyncWrap');
-  if(tabBar&&syncWrap){
-    order.forEach(function(tid){
-      var tab=document.getElementById('tab-'+tid);
-      if(tab)tabBar.insertBefore(tab,syncWrap);
-    });
-  }
-  // Show saved message
+  if(tabBar&&syncWrap){order.forEach(function(tid){var tab=document.getElementById('tab-'+tid);if(tab)tabBar.insertBefore(tab,syncWrap);});}
   var msg=document.getElementById('st-order-saved-msg');
-  if(msg){msg.textContent='✓ Saved! Tab bar updated.';msg.style.opacity='1';setTimeout(function(){msg.style.opacity='0';},2500);}
+  if(msg){msg.textContent='✓ Saved!';msg.style.opacity='1';setTimeout(function(){msg.style.opacity='0';},2500);}
 };
-
-window.stRename=function(tid){
-  var sp=document.getElementById('lbl-'+tid);
-  var st2=document.getElementById('st-lbl-'+tid);
-  if(!sp)return;
-  var orig=sp.textContent;
-  var nv=prompt('Rename "'+orig+'" to:',orig);
-  if(!nv||!nv.trim())return;
-  nv=nv.trim();
-  sp.textContent=nv;
-  if(st2)st2.textContent=nv;
-  localStorage.setItem('adlbl_'+tid,nv);
-};
-
-window.stToggleVis=function(tid,visible){
-  var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');
-  if(visible){hl=hl.filter(function(x){return x!==tid;});}
-  else{if(!hl.includes(tid))hl.push(tid);}
-  localStorage.setItem('ad_hidden',JSON.stringify(hl));
-  _hidden=hl;
-  if(visible){
-    var te=document.getElementById('tab-'+tid);if(te)te.style.cssText='';
-    var pid=PANEL[tid]||('panel-'+tid);
-    var pe=document.getElementById(pid);if(pe)pe.style.cssText='';
-  }else{_applyHidden();}
-};
-
-var SHORT_ICONS={tracker:'📊',pledge:'🔥',sheet:'📋',dayflow:'📅',abhiplanner:'🗓️',codetrack:'💻',breathe:'🫁',znf:'✈',vanity:'💪',fitlog:'🏃',calendar:'📅',settings:'⚙️'};
-
-function stRenderShortNames(){
-  var tbody=document.getElementById('st-shortnames-body');if(!tbody)return;
-  var rows='';
-  var order=stGetOrder().concat(['settings']);
-  order.forEach(function(tid){
-    var icon=SHORT_ICONS[tid]||'📄';
-    var displayName=localStorage.getItem('adlbl_'+tid)||(PM[tid]?PM[tid].def:tid);
-    rows+='<tr style="border-bottom:1px solid rgba(128,128,128,.1);"><td style="padding:5px 8px;"><code style="background:rgba(108,138,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:11px;">'+tid+'</code></td><td style="padding:5px 8px;color:var(--text);">'+icon+' '+displayName+'</td><td style="padding:5px 8px;color:var(--muted);font-size:10px;">panel-'+tid+'</td></tr>';
-  });
-  tbody.innerHTML=rows;
-}
-
+window.stRename=function(tid){var sp=document.getElementById('lbl-'+tid);var st2=document.getElementById('st-lbl-'+tid);if(!sp)return;var orig=sp.textContent;var nv=prompt('Rename "'+orig+'" to:',orig);if(!nv||!nv.trim())return;nv=nv.trim();sp.textContent=nv;if(st2)st2.textContent=nv;localStorage.setItem('adlbl_'+tid,nv);};
+window.stToggleVis=function(tid,visible){var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');if(visible){hl=hl.filter(function(x){return x!==tid;});}else{if(!hl.includes(tid))hl.push(tid);}localStorage.setItem('ad_hidden',JSON.stringify(hl));_hidden=hl;if(visible){var te=document.getElementById('tab-'+tid);if(te)te.style.cssText='';var pid=PANEL[tid]||('panel-'+tid);var pe=document.getElementById(pid);if(pe)pe.style.cssText='';}else{_applyHidden();}};
+var SHORT_ICONS={tracker:'\ud83d\udcca',pledge:'\ud83d\udd25',sheet:'\ud83d\udccb',dayflow:'\ud83d\udcc5',abhiplanner:'\ud83d\uddd3\ufe0f',codetrack:'\ud83d\udcbb',breathe:'\ud83e\udd2b',znf:'\u2708',vanity:'\ud83d\udcaa',fitlog:'\ud83c\udfc3',calendar:'\ud83d\udcc5',settings:'\u2699\ufe0f'};
+function stRenderShortNames(){var tbody=document.getElementById('st-shortnames-body');if(!tbody)return;var rows='';var order=stGetOrder();order.forEach(function(tid){var icon=SHORT_ICONS[tid]||'\ud83d\udcc4';var displayName=localStorage.getItem('adlbl_'+tid)||(PM[tid]?PM[tid].def:tid);rows+='<tr style="border-bottom:1px solid rgba(128,128,128,.1);"><td style="padding:5px 8px;"><code style="background:rgba(108,138,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:11px;">'+tid+'</code></td><td style="padding:5px 8px;color:var(--text);">'+icon+' '+displayName+'</td><td style="padding:5px 8px;color:var(--muted);font-size:10px;">panel-'+tid+'</td></tr>';});tbody.innerHTML=rows;}
 function stWireDrag(){
   var list=document.getElementById('st-panel-list');if(!list)return;
   var dragging=null;
@@ -1902,7 +1819,7 @@ function stWireDrag(){
     row.addEventListener('dragend',function(){
       row.style.opacity='';
       dragging=null;
-      // Do NOT auto-apply — user must click "Save Tab Order"
+      stSaveCurrentOrder();
     });
     row.addEventListener('dragover',function(e){
       e.preventDefault();
@@ -1914,15 +1831,24 @@ function stWireDrag(){
         list.insertBefore(dragging,fromIdx<toIdx?row.nextSibling:row);
       }
     });
-    row.addEventListener('drop',function(e){e.preventDefault();});
+    row.addEventListener('drop',function(e){ e.preventDefault(); });
   });
 }
 
-window._settingsRender=function(){
-  var panel=document.getElementById('panel-settings');
-  if(!panel.querySelector('.st-toolbar'))buildSettings();
-  else stRender();
-};
+function stSaveCurrentOrder(){
+  var list=document.getElementById('st-panel-list');if(!list)return;
+  var order=[].slice.call(list.querySelectorAll('.st-panel-row')).map(function(r){return r.dataset.tid;});
+  stSaveOrder(order);
+  // Immediately reorder tab bar DOM to match
+  var tabBar=document.getElementById('tabBar');
+  var syncWrap=document.getElementById('abhisyncWrap');
+  if(!tabBar||!syncWrap)return;
+  order.forEach(function(tid){
+    var tab=document.getElementById('tab-'+tid);
+    if(tab)tabBar.insertBefore(tab,syncWrap);
+  });
+}
+window._settingsRender=function(){var panel=document.getElementById('panel-settings');if(!panel.querySelector('.st-toolbar'))buildSettings();else stRender();};
 })();
 
 
@@ -2103,8 +2029,7 @@ async function quickBackup() {
   btn.disabled = true;
 
   try {
-    var now = new Date();
-    var timestamp = now.toISOString();
+    var timestamp = new Date().toISOString();
     var master = { _syncedAt: timestamp, _source: 'AbhiDesk', _version: '3.0' };
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
@@ -2113,13 +2038,13 @@ async function quickBackup() {
       try { master[k] = JSON.parse(v); } catch(e) { master[k] = v; }
     }
 
-    // Human-readable filename: "AbhiDesk Backup — HH:MM on DD/MM/YYYY.json"
-    var hh=String(now.getHours()).padStart(2,'0');
-    var mm=String(now.getMinutes()).padStart(2,'0');
-    var dd=String(now.getDate()).padStart(2,'0');
-    var mo=String(now.getMonth()+1).padStart(2,'0');
-    var yyyy=now.getFullYear();
-    var fname='AbhiDesk Backup — '+hh+':'+mm+' on '+dd+'-'+mo+'-'+yyyy+'.json';
+    var now2 = new Date();
+    var hh2=String(now2.getHours()).padStart(2,'0');
+    var mm2=String(now2.getMinutes()).padStart(2,'0');
+    var dd2=String(now2.getDate()).padStart(2,'0');
+    var mo2=String(now2.getMonth()+1).padStart(2,'0');
+    var yyyy2=now2.getFullYear();
+    var fname='AbhiDesk Backup — '+hh2+':'+mm2+' on '+dd2+'-'+mo2+'-'+yyyy2+'.json';
     var json = JSON.stringify(master, null, 2);
 
     var folder = await _getSyncFolder();
@@ -2303,11 +2228,9 @@ window.addEventListener('message', function(e) {
   }
   // ── Shift Tracker updated: re-highlight job days in FitLog + Daily Log ──
   if (e.data && e.data.type === 'shifts_updated') {
-    // Rebuild both tables to pick up new job dates from localStorage
     build();
     var flBody = document.getElementById('fl-tbody');
     if (flBody) flBuildTable();
-    // Notify calendar and abhi planner iframes about job days
     var jobDates = e.data.jobDates || [];
     var allShifts = e.data.shifts || [];
     ['fr-calendar','fr-abhiplanner','fr-dayflow'].forEach(function(id) {
@@ -2316,18 +2239,181 @@ window.addEventListener('message', function(e) {
         try { fr.contentWindow.postMessage({ type: 'job_days_updated', jobDates: jobDates }, '*'); } catch(ex) {}
       }
     });
-    // Send full shifts to dayflow for auto-block placement
-    var frDf = document.getElementById('fr-dayflow');
-    if (frDf && frDf.contentWindow) {
-      try { frDf.contentWindow.postMessage({ type: 'shifts_auto_place', shifts: allShifts }, '*'); } catch(ex) {}
+    // Forward full shifts to dayflow for auto-placement
+    var frDf2 = document.getElementById('fr-dayflow');
+    if (frDf2 && frDf2.contentWindow) {
+      try { frDf2.contentWindow.postMessage({ type: 'shifts_auto_place', shifts: allShifts }, '*'); } catch(ex) {}
     }
-    // Send full shifts to vanity for shift day display
-    var frVan = document.getElementById('fr-vanity');
-    if (frVan && frVan.contentWindow) {
-      try { frVan.contentWindow.postMessage({ type: 'shifts_updated', shifts: allShifts, jobDates: jobDates }, '*'); } catch(ex) {}
+    // Forward to vanity for shift day badges
+    var frVn = document.getElementById('fr-vanity');
+    if (frVn && frVn.contentWindow) {
+      try { frVn.contentWindow.postMessage({ type: 'job_days_updated', jobDates: jobDates }, '*'); } catch(ex) {}
     }
   }
+
+  // DayFlow core shifts → Calendar, Vanity, AbhiPlanner
+  if (e.data && e.data.type === 'dayflow_core_shifts') {
+    var coreShifts = e.data.shifts || [];
+    var csDates = coreShifts.map(function(s){return s.dateKey;}).filter(Boolean);
+    var csDatesUniq = csDates.filter(function(d,i){return csDates.indexOf(d)===i;});
+
+    var frCal = document.getElementById('fr-calendar');
+    if (frCal && frCal.contentWindow) {
+      try { frCal.contentWindow.postMessage({ type: 'core_shifts_updated', shifts: coreShifts, jobDates: csDatesUniq }, '*'); } catch(ex) {}
+    }
+    ['fr-vanity','fr-abhiplanner'].forEach(function(id){
+      var fr = document.getElementById(id);
+      if (fr && fr.contentWindow) {
+        try { fr.contentWindow.postMessage({ type: 'job_days_updated', jobDates: csDatesUniq }, '*'); } catch(ex) {}
+      }
+    });
+  }
 });
+
+// ════════════════════════════════════════════════════════
+// HELP PANEL
+// ════════════════════════════════════════════════════════
+(function(){
+var _helpBuilt=false;
+function buildHelp(){
+  var panel=document.getElementById('panel-help');
+  if(!panel)return;
+  panel.style.overflowY='auto';
+  panel.style.padding='0';
+
+  var sections=[
+    {id:'overview',icon:'🏠',title:'What is AbhiDesk?',content:`
+      <p>AbhiDesk is your personal productivity hub — all your tools in one browser tab. Each panel is a mini-app that shares data with the others. Everything saves locally in your browser using <code>localStorage</code>, so your data stays on your device.</p>
+      <p style="margin-top:8px"><b>Key idea:</b> Add a shift in Shift Tracker → it appears in DayFlow, Calendar, Vanity, and AbhiPlanner automatically. Enter your wake time in FitLog → a Kickstart block appears in DayFlow. Everything is connected.</p>
+    `},
+    {id:'tabs',icon:'🔢',title:'Tab Bar & Settings',content:`
+      <b>Two-row tab bar</b> — all your panels sit in two rows at the top. No horizontal scrolling.<br><br>
+      <b>Rearranging tabs:</b> Go to <b>Settings → Panel Order</b>. Drag rows to reorder, then click <b>💾 Save Tab Order</b>. The tab bar updates immediately and persists after refresh.<br><br>
+      <b>Hiding panels:</b> Toggle the switch next to any panel in Settings to hide/show it.<br><br>
+      <b>Renaming tabs:</b> Double-click any tab label, or use the ✎ Rename button in Settings.
+    `},
+    {id:'shifts',icon:'💼',title:'Shift Tracker',content:`
+      <b>Add a shift:</b> Enter the date, venue, start time, end time, and click <b>+ Add Shift</b>.<br><br>
+      <b>Quota:</b> Each day has a 12-hour free time quota. Adding an 8h shift reduces it to 4h. The quota box updates live.<br><br>
+      <b>What happens automatically when you add a shift:</b>
+      <ul style="margin:6px 0 0 16px;line-height:1.9">
+        <li>📅 <b>DayFlow</b> — gets a locked 💼 Shift block + 🚗 Pre-Shift Prep (2h before) + 🏠 Post-Shift Wind-Down (1.5h after)</li>
+        <li>📅 <b>Calendar</b> — the core shift block appears on the correct day</li>
+        <li>💪 <b>Vanity</b> — the day gets a 💼 Work badge</li>
+        <li>🗓️ <b>AbhiPlanner</b> — the day is highlighted as a work day</li>
+      </ul>
+    `},
+    {id:'dayflow',icon:'📅',title:'DayFlow',content:`
+      <b>What it is:</b> A visual timeline planner. Drag blocks from the left panel (Parking Lot) onto the timeline.<br><br>
+      <b>30-day window:</b> The timeline shows 30 days at a time. Use the <b>Jump to date</b> picker to move the window. Click <b>Now</b> to snap back to today.<br><br>
+      <b>Locked blocks 🔒:</b> Shift blocks, Pre/Post-Shift, and Kickstart are system-managed. They cannot be deleted or moved — they come from Shift Tracker and FitLog.<br><br>
+      <b>Countdown line:</b> A red-to-blue vertical line appears on the right side of the timeline showing time remaining to your next shift, <i>only if it's within 12 hours</i>.<br><br>
+      <b>Kickstart block:</b> Set your wake-up time in FitLog and a 🌅 Kickstart block automatically appears in DayFlow from wake-up to now.
+    `},
+    {id:'calendar',icon:'📅',title:'Calendar',content:`
+      <b>What it shows:</b> Your 2026 calendar week-by-week. Shift blocks from DayFlow appear as coloured bars on the correct days.<br><br>
+      <b>Adding shifts manually:</b> You can also type/paste shift times directly in the Calendar panel using the Parse Shifts feature.<br><br>
+      <b>Work day highlight:</b> Days with shifts get a gold left border.
+    `},
+    {id:'fitlog',icon:'🏃',title:'Fit Log',content:`
+      <b>What it is:</b> A full-year daily log for fitness, sleep, and productivity.<br><br>
+      <b>Sleep tracking:</b>
+      <ul style="margin:6px 0 0 16px;line-height:1.9">
+        <li>Enter <b>Sleep Time</b> (when you went to bed) and <b>Wake Up</b> time</li>
+        <li>Tick <b>Same Day?</b> if you slept and woke on the same calendar date — e.g. day-shift worker napping, or night-shift worker who sleeps after getting home before midnight</li>
+        <li><b>Slept</b> column calculates hours automatically</li>
+      </ul>
+      <b>Notes:</b> Click <b>+</b> at the right of any row to add a day note (max 1000 chars). The input grows as you type — it does not wrap.<br><br>
+      <b>Wake up → Kickstart:</b> Entering your wake time here automatically sends a Kickstart block to DayFlow for that day.
+    `},
+    {id:'vanity',icon:'💪',title:'Vanity',content:`
+      A monthly fitness calendar showing muscle groups ticked per day, wellness habits, and work day badges. Days with shifts show a 💼 Work badge in blue.
+    `},
+    {id:'backup',icon:'💾',title:'Backups & Restore',content:`
+      <b>Taking a backup:</b>
+      <ol style="margin:6px 0 0 16px;line-height:1.9">
+        <li>Go to <b>Settings → Backup Folder</b> and click <b>📂 Pick Backup Folder</b> (only needed once)</li>
+        <li>Click <b>⬇ Take Backup Now</b> — it saves automatically to your chosen folder</li>
+      </ol>
+      <b>Backup filename format:</b> <code>AbhiDesk Backup — 14:30 on 01-05-2026.json</code><br><br>
+      <b>Restoring a backup:</b>
+      <ol style="margin:6px 0 0 16px;line-height:1.9">
+        <li>Click <b>⬆ Load a Backup</b> in Settings or the top bar</li>
+        <li>If a folder is set, it lists your backups — pick one</li>
+        <li>If no folder, a file picker opens — find your .json file</li>
+        <li>The page reloads with all data restored</li>
+      </ol>
+      <b>Using on another device:</b> Take a backup on device 1 → copy the .json to device 2 → use Load a Backup.
+    `},
+    {id:'znf',icon:'✈',title:'Zero Noise Flight (ZNF)',content:`
+      A deep focus session tracker. Start a session, and it tracks your focus time. Analytics show your focus patterns over time. Named after the idea of switching to "airplane mode" mentally — zero distractions.
+    `},
+    {id:'misc',icon:'🔧',title:'Tips & Tricks',content:`
+      <ul style="margin:4px 0 0 16px;line-height:2">
+        <li>All data is local — clearing browser storage wipes AbhiDesk data. <b>Back up regularly.</b></li>
+        <li>If a panel looks broken after an update, try clearing localStorage for that panel's key from DevTools → Application tab.</li>
+        <li>Shift blocks in DayFlow are locked (🔒) — they come from Shift Tracker and cannot be manually deleted. Delete the shift in Shift Tracker instead.</li>
+        <li>The <b>Now</b> button in DayFlow always jumps to today at the current time — even if you've scrolled far away.</li>
+        <li>Double-click any tab label to rename it. The short name (used internally) never changes.</li>
+        <li>ZNF and CodeTracker require the Anthropic API key for AI features — enter it in CodeTracker's API key banner.</li>
+      </ul>
+    `}
+  ];
+
+  var searchHtml='<div style="padding:14px 20px 10px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;">';
+  searchHtml+='<div style="display:flex;align-items:center;gap:10px;">';
+  searchHtml+='<h2 style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);flex-shrink:0;">❓ // Help &amp; Manual</h2>';
+  searchHtml+='<input id="help-search" type="text" placeholder="🔍 Search topics…" oninput="helpSearch(this.value)" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit;outline:none;">';
+  searchHtml+='</div></div>';
+
+  var bodyHtml='<div id="help-body" style="padding:16px 20px 40px;display:flex;flex-direction:column;gap:14px;">';
+  sections.forEach(function(s){
+    bodyHtml+='<div class="help-section" data-title="'+s.title.toLowerCase()+'" id="help-sec-'+s.id+'" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+    bodyHtml+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;" onclick="helpToggle(''+s.id+'')">';
+    bodyHtml+='<span style="font-size:16px;">'+s.icon+'</span>';
+    bodyHtml+='<span style="font-weight:700;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text);">'+s.title+'</span>';
+    bodyHtml+='<span id="help-arrow-'+s.id+'" style="margin-left:auto;color:var(--muted);font-size:12px;">▼</span>';
+    bodyHtml+='</div>';
+    bodyHtml+='<div id="help-content-'+s.id+'" style="padding:12px 16px;font-size:12px;line-height:1.8;color:var(--text2);">'+s.content+'</div>';
+    bodyHtml+='</div>';
+  });
+  bodyHtml+='</div>';
+
+  panel.innerHTML=searchHtml+bodyHtml;
+  _helpBuilt=true;
+}
+
+window.helpToggle=function(id){
+  var el=document.getElementById('help-content-'+id);
+  var ar=document.getElementById('help-arrow-'+id);
+  if(!el)return;
+  var vis=el.style.display!=='none';
+  el.style.display=vis?'none':'block';
+  if(ar)ar.textContent=vis?'►':'▼';
+};
+
+window.helpSearch=function(q){
+  q=q.toLowerCase().trim();
+  document.querySelectorAll('.help-section').forEach(function(s){
+    var title=s.dataset.title||'';
+    var content=(s.querySelector('[id^="help-content-"]')||{}).textContent||'';
+    var match=!q||title.includes(q)||content.toLowerCase().includes(q);
+    s.style.display=match?'':'none';
+    if(match&&q){
+      // Auto-expand matching sections
+      var sec=s.id.replace('help-sec-','');
+      var el=document.getElementById('help-content-'+sec);
+      var ar=document.getElementById('help-arrow-'+sec);
+      if(el){el.style.display='block';}
+      if(ar){ar.textContent='▼';}
+    }
+  });
+};
+
+window._helpRender=function(){
+  if(!_helpBuilt) buildHelp();
+};
+})();
 </script>
 </body>
 </html>
