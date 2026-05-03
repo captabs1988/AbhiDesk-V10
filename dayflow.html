@@ -67,12 +67,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .p-block-actions button:hover{background:rgba(0,0,0,.15);} /* action hover */
 
 /* TIMELINE */
-.timeline-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;} /* center panel */
+.timeline-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;} /* center panel */
 .timeline-scroll{flex:1;overflow-y:scroll;overflow-x:hidden;position:relative;} /* timeline scroller */
 .timeline-scroll::-webkit-scrollbar{width:6px;} /* scrollbar width */
 .timeline-scroll::-webkit-scrollbar-track{background:var(--bg);} /* scrollbar track */
 .timeline-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;} /* scrollbar thumb */
-.timeline-inner{position:relative;height:69120px;display:flex;}  /* timeline body */
+.timeline-inner{position:relative;display:flex;}  /* timeline body — height set dynamically */
 
 .time-ruler{width:62px;min-width:62px;position:relative;border-right:2px solid var(--border);background:var(--surface);flex-shrink:0;} /* left time ruler */
 .time-label{position:absolute;right:6px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);transform:translateY(-50%);white-space:nowrap;pointer-events:none;} /* time labels */
@@ -83,6 +83,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .tod-band{position:absolute;left:0;right:0;pointer-events:none;z-index:0;} /* time-of-day background band */
 .hour-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.09);pointer-events:none;z-index:1;} /* hour guide */
 .hour-line.day-break{background:rgba(124,58,237,.25);height:2px;}  /* day break guide */
+.minute-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.04);pointer-events:none;z-index:1;} /* faint minute guide — only at deepest zoom */
+[data-theme="light"] .minute-line{background:rgba(0,0,0,.05);}
+
+/* MONTH NAV STRIP */
+.month-nav{display:flex;align-items:center;gap:4px;padding:5px 10px;background:var(--surface);border-top:2px solid var(--border);flex-shrink:0;overflow-x:auto;}
+.month-nav::-webkit-scrollbar{height:3px;}
+.month-nav::-webkit-scrollbar-thumb{background:var(--border2);}
+.month-btn{padding:4px 10px;border-radius:5px;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .12s;flex-shrink:0;}
+.month-btn:hover{border-color:var(--accent);color:var(--accent);}
+.month-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.month-btn.cur-month{border-color:#10b981;color:#10b981;}
+.month-btn.cur-month.active{background:#10b981;color:#fff;border-color:#10b981;}
+
+/* ZOOM CONTROLS — floating top-right of timeline */
+.zoom-ctl{position:absolute;top:8px;right:14px;z-index:40;display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px;box-shadow:0 3px 10px rgba(0,0,0,.12);font-family:'Space Mono',monospace;}
+.zoom-ctl button{width:28px;height:24px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:5px;cursor:pointer;font-size:13px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;}
+.zoom-ctl button:hover{border-color:var(--accent);color:var(--accent);}
+.zoom-ctl button:disabled{opacity:.35;cursor:not-allowed;}
+.zoom-ctl .zoom-badge{font-size:9px;color:var(--muted);text-align:center;font-weight:700;letter-spacing:.5px;line-height:1;padding:2px 0;}
+
+/* FROZEN parking block tint */
+.p-block.p-block-frozen{opacity:.85;}
+.p-block.p-block-frozen .p-block-name{font-style:italic;}
 
 .now-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,#ef4444,#f97316);z-index:30;pointer-events:none;box-shadow:0 0 8px rgba(239,68,68,.35);} /* live now line */
 .now-line::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 6px rgba(239,68,68,.5);} /* now line dot */
@@ -92,8 +115,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .t-block.dragging{cursor:grabbing;opacity:.88;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:100!important;} /* dragging state */
 .t-block.selected{box-shadow:0 0 0 2px var(--accent),0 4px 18px rgba(67,97,238,.18);z-index:20!important;} /* selected state */
 .t-block.overlap{outline:2px dashed #ef4444!important;} /* overlap warning */
-.t-block.locked-block{cursor:default!important;border-left-width:5px!important;} /* locked system block */
-.t-block.locked-block:hover{box-shadow:0 2px 10px rgba(108,138,255,.15);}
 .day-start-line{position:absolute;left:0;right:0;height:2px;background:rgba(108,138,255,.18);z-index:3;pointer-events:none;}
 .t-block-header{display:flex;align-items:flex-start;justify-content:space-between;gap:4px;} /* block header */
 .t-block-name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} /* block title */
@@ -215,6 +236,51 @@ window.addEventListener('message',function(e){
   if(e.data&&e.data.type==='shifts_auto_place'&&e.data.shifts){
     autoPlaceShiftBlocks(e.data.shifts);
   }
+  // ZNF Deep Work integration: parent ZNF panel posts znf_start on activation,
+  // znf_stop when finished. We place a fully-editable Deep Work block on the
+  // canvas; user can later delete/move/resize it freely.
+  if(e.data&&e.data.type==='znf_start'){
+    var sid=e.data.sessionId, sMs=e.data.startMs;
+    if(!sid||!sMs) return;
+    var blockId='auto_znf_'+sid;
+    // Avoid duplicates
+    if(placed.some(function(p){return p.id===blockId;})) return;
+    var d=new Date(sMs);
+    var todayKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var startMin=d.getHours()*60+d.getMinutes();
+    // Cal Newport's Deep Work — yellow on black cover. Yellow it is.
+    var dwColor={r:250,g:204,b:21,a:78};
+    placeBlock('znf','\u2708 Deep Work',dwColor,startMin,1,blockId,sMs,todayKey);
+    saveState();
+  }
+  if(e.data&&e.data.type==='znf_stop'){
+    var sid2=e.data.sessionId, sMs2=e.data.startMs, eMs2=e.data.endMs;
+    if(!sid2||!sMs2||!eMs2) return;
+    var bid2='auto_znf_'+sid2;
+    var pb=placed.find(function(p){return p.id===bid2;});
+    var actualMin=Math.max(1,Math.round((eMs2-sMs2)/60000));
+    if(pb){
+      // Resize existing placeholder to exact duration
+      pb.duration=actualMin;
+      if(pb.el) pb.el.style.height=Math.max(26,actualMin*PPM)+'px';
+      // Refresh inline duration label
+      var endLbl=pb.el && pb.el.querySelector('.t-end');
+      var durLbl=pb.el && pb.el.querySelector('.t-dur');
+      if(endLbl) endLbl.textContent=fmtHHMM(pb.startMin+actualMin);
+      if(durLbl) durLbl.textContent='('+actualMin+'m)';
+      checkOverlaps(); updateNotepad(); updateCountdownGuides();
+      startCountersIfNeeded(); saveState();
+    } else {
+      // Placeholder missing (e.g. iframe reloaded mid-session) — create the
+      // finalized block now from the recorded times.
+      var d2=new Date(sMs2);
+      var dayKey2=d2.getFullYear()+'-'+String(d2.getMonth()+1).padStart(2,'0')+'-'+String(d2.getDate()).padStart(2,'0');
+      var startMin2=d2.getHours()*60+d2.getMinutes();
+      var dwColor2={r:250,g:204,b:21,a:78};
+      placeBlock('znf','\u2708 Deep Work',dwColor2,startMin2,actualMin,bid2,sMs2,dayKey2);
+      saveState();
+    }
+  }
 });
 </script>
 </head>
@@ -264,12 +330,18 @@ window.addEventListener('message',function(e){
   </div>
 
   <div class="timeline-wrap">
+    <div class="zoom-ctl">
+      <button id="btnZoomIn" title="Zoom in">+</button>
+      <div class="zoom-badge" id="zoomBadge">3/4</div>
+      <button id="btnZoomOut" title="Zoom out">−</button>
+    </div>
     <div class="timeline-scroll" id="tlScroll">
       <div class="timeline-inner">
         <div class="time-ruler" id="ruler"></div>
         <div class="drop-zone" id="dz"></div>
       </div>
     </div>
+    <div class="month-nav" id="monthNav"></div>
   </div>
 
   <div class="notepad" id="notepad">
@@ -407,13 +479,40 @@ window.addEventListener('message',function(e){
 // ══════════════════════════════════════════════════
 // CONSTANTS
 // ══════════════════════════════════════════════════
-const PPM   = 1.6; // pixels per minute
-const WINDOW_DAYS = 30; // days shown at once
-const TOTAL = WINDOW_DAYS * 1440;  // total minutes in window
+// Zoom levels: pixels per minute. Index 0 = most zoomed out, 3 = most zoomed in.
+const ZOOM_LEVELS = [0.5, 1.0, 1.6, 4.0];
+let zoomIdx = 2; // default: 1.6 PPM (matches old behaviour)
+let PPM = ZOOM_LEVELS[zoomIdx]; // pixels per minute (mutable for zoom)
 
-// Window anchor: the date shown at renderMin=0
-// windowStartKey is a YYYY-MM-DD string; today by default
-let windowStartKey = null; // set after tzEl is initialized
+// 12 monthly canvases — May 2026 through Apr 2027.
+// Each entry: {y:year, m:month0idx, label:'May 2026', startKey:'2026-05-01', days:31}
+function _daysInMonth(y, m){ return new Date(y, m+1, 0).getDate(); }
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYFLOW_MONTHS = (function(){
+  const out = []; let y = 2026, m = 4; // May 2026 (month index 4)
+  for(let i=0;i<12;i++){
+    const d = _daysInMonth(y, m);
+    out.push({
+      y: y, m: m,
+      label: MONTH_NAMES[m]+' '+y,
+      shortLabel: MONTH_NAMES[m]+' '+String(y).slice(-2),
+      startKey: y+'-'+String(m+1).padStart(2,'0')+'-01',
+      days: d
+    });
+    m++; if(m>11){ m=0; y++; }
+  }
+  return out;
+})();
+
+// Currently selected month index (into DAYFLOW_MONTHS)
+let curMonthIdx = 0; // set in initWindow based on today
+
+// WINDOW_DAYS / TOTAL are now derived from selected month
+function getWindowDays(){ return DAYFLOW_MONTHS[curMonthIdx].days; }
+function getTotalMin(){ return getWindowDays() * 1440; }
+
+// Window anchor: 1st of the selected month
+let windowStartKey = null; // set in initWindow
 
 const PRESET_COLORS = [
   [79,142,247],[167,139,250],[52,211,153],[248,113,113],
@@ -641,12 +740,25 @@ allTzs.forEach(tz => {
 const getTz = () => tzEl.value; // current timezone getter
 
 // ══════════════════════════════════════════════════
-// 30-DAY WINDOW MANAGEMENT
+// MONTHLY CANVAS MANAGEMENT
 // ══════════════════════════════════════════════════
 function initWindow() {
-  windowStartKey = getTodayKey();
+  // Pick current real-world month if it exists in DAYFLOW_MONTHS, else first month.
+  const today = new Date();
+  const ty = today.getFullYear(), tm = today.getMonth();
+  let found = DAYFLOW_MONTHS.findIndex(M => M.y === ty && M.m === tm);
+  if(found < 0) found = 0;
+  curMonthIdx = found;
+  windowStartKey = DAYFLOW_MONTHS[curMonthIdx].startKey;
   const jumpEl = document.getElementById('jumpDate');
   if(jumpEl) jumpEl.value = windowStartKey;
+}
+
+// Returns true if the selected month is the current real-world month
+function isCurrentMonth(){
+  const today = new Date();
+  const M = DAYFLOW_MONTHS[curMonthIdx];
+  return M.y === today.getFullYear() && M.m === today.getMonth();
 }
 
 // Get the date key for a given renderMin (offset from windowStartKey midnight)
@@ -674,52 +786,140 @@ function getNowRenderMin() {
   return Math.floor((Date.now() - wsMs) / 60000);
 }
 
-function jumpToDate(dateStr) {
-  const val = dateStr || document.getElementById('jumpDate').value;
-  if(!val) return;
-  windowStartKey = val;
-  document.getElementById('jumpDate').value = val;
-  // Rebuild ruler and drop zone labels
+// Switch to a different month canvas by index (0..11). If idx===curMonthIdx,
+// just refreshes/scrolls. autoScroll=true will scroll to today's row when current month.
+function switchMonth(idx, autoScroll) {
+  if(idx < 0 || idx >= DAYFLOW_MONTHS.length) return;
+  curMonthIdx = idx;
+  windowStartKey = DAYFLOW_MONTHS[idx].startKey;
+  const jd = document.getElementById('jumpDate');
+  if(jd) jd.value = windowStartKey;
+  applyTimelineHeight();
   rebuildRuler();
   buildDropZone();
-  // Re-render all placed blocks at new offsets
   rebuildPlacedPositions();
-  // Scroll to start of new window or now if today is in window
-  const nowRM = getNowRenderMin();
-  if(nowRM >= 0 && nowRM <= TOTAL) {
-    const scrollTo = Math.max(0, nowRM - 60);
-    tlScroll.scrollTop = m2y(scrollTo);
-    tSlider.value = scrollTo;
+  buildMonthNav(); // refresh active button
+  if(tSlider) tSlider.max = getTotalMin();
+  // Scroll behaviour
+  if(isCurrentMonth() && autoScroll !== false){
+    const nowRM = getNowRenderMin();
+    if(nowRM >= 0 && nowRM <= getTotalMin()){
+      const scrollTo = Math.max(0, nowRM - 60);
+      tlScroll.scrollTop = m2y(scrollTo);
+      if(tSlider) tSlider.value = scrollTo;
+    } else {
+      tlScroll.scrollTop = 0;
+      if(tSlider) tSlider.value = 0;
+    }
   } else {
     tlScroll.scrollTop = 0;
-    tSlider.value = 0;
+    if(tSlider) tSlider.value = 0;
   }
   updateSliderLabel();
   updateNow();
   updateCountdownGuides();
 }
 
+// Legacy jumpToDate(date) — find which month contains the date and switch
+function jumpToDate(dateStr) {
+  const val = dateStr || (document.getElementById('jumpDate') && document.getElementById('jumpDate').value);
+  if(!val) return;
+  const parts = val.split('-').map(Number);
+  let idx = DAYFLOW_MONTHS.findIndex(M => M.y === parts[0] && M.m === parts[1]-1);
+  if(idx < 0) idx = curMonthIdx;
+  switchMonth(idx, true);
+}
+
 function rebuildPlacedPositions() {
-  // Recompute renderMin for all placed blocks based on new windowStartKey
+  // Recompute renderMin for all placed blocks based on new windowStartKey.
+  // Blocks for dates outside the current month get hidden (their dateKey is preserved).
   placed.forEach(pb => {
     const dk = pb.dateKey || windowStartKey;
-    const renderMin = getRenderMinForDateKey(dk) + (pb._origStartMin != null ? pb._origStartMin : pb.startMin % 1440);
+    const dayOff = getRenderMinForDateKey(dk);
+    const renderMin = dayOff + (pb._origStartMin != null ? pb._origStartMin : pb.startMin % 1440);
     pb.startMin = renderMin;
-    if(pb.el) pb.el.style.top = m2y(renderMin) + 'px';
+    if(pb.el){
+      // Hide blocks that fall outside the visible month
+      if(dayOff < 0 || dayOff >= getTotalMin()){
+        pb.el.style.display = 'none';
+      } else {
+        pb.el.style.display = '';
+        pb.el.style.top = m2y(renderMin) + 'px';
+        pb.el.style.height = Math.max(26, pb.duration * PPM) + 'px';
+      }
+    }
   });
 }
 
+// Apply timeline-inner height for current zoom + month
+function applyTimelineHeight(){
+  const inner = document.querySelector('.timeline-inner');
+  if(inner) inner.style.height = (getTotalMin() * PPM) + 'px';
+}
+
 function scrollToNow() {
+  // If we're not in the current real-world month, switch to it first
+  if(!isCurrentMonth()){
+    const today = new Date();
+    const idx = DAYFLOW_MONTHS.findIndex(M => M.y === today.getFullYear() && M.m === today.getMonth());
+    if(idx >= 0){ switchMonth(idx, true); return; }
+  }
   const nowRM = getNowRenderMin();
-  if(nowRM < 0 || nowRM > TOTAL) {
-    // Today not in window — jump window to today first
-    jumpToDate(getTodayKey());
+  if(nowRM < 0 || nowRM > getTotalMin()) {
+    // Fallback — current month not in DAYFLOW_MONTHS list
     return;
   }
   const scrollTo = Math.max(0, nowRM - 60);
   tlScroll.scrollTop = m2y(scrollTo);
-  tSlider.value = scrollTo;
+  if(tSlider) tSlider.value = scrollTo;
   updateSliderLabel();
+}
+
+// ══════════════════════════════════════════════════
+// ZOOM CONTROLS
+// ══════════════════════════════════════════════════
+function setZoom(newIdx, anchorY){
+  newIdx = Math.max(0, Math.min(ZOOM_LEVELS.length-1, newIdx));
+  if(newIdx === zoomIdx) return;
+  // Preserve the time at the top of the viewport so scroll stays anchored
+  const anchorMin = (anchorY != null ? anchorY : tlScroll.scrollTop) / PPM;
+  zoomIdx = newIdx;
+  PPM = ZOOM_LEVELS[zoomIdx];
+  applyTimelineHeight();
+  rebuildRuler();
+  buildDropZone();
+  rebuildPlacedPositions();
+  if(tSlider) tSlider.max = getTotalMin();
+  tlScroll.scrollTop = anchorMin * PPM;
+  if(tSlider) tSlider.value = Math.min(getTotalMin(), Math.round(anchorMin));
+  updateSliderLabel();
+  updateNow();
+  updateCountdownGuides();
+  updateZoomBadge();
+}
+function zoomIn(){ setZoom(zoomIdx + 1); }
+function zoomOut(){ setZoom(zoomIdx - 1); }
+function updateZoomBadge(){
+  const lbl = document.getElementById('zoomBadge');
+  if(lbl) lbl.textContent = (zoomIdx+1)+'/'+ZOOM_LEVELS.length;
+}
+
+// ══════════════════════════════════════════════════
+// MONTH NAV STRIP
+// ══════════════════════════════════════════════════
+function buildMonthNav(){
+  const nav = document.getElementById('monthNav');
+  if(!nav) return;
+  nav.innerHTML = '';
+  const today = new Date();
+  DAYFLOW_MONTHS.forEach((M, i) => {
+    const b = document.createElement('button');
+    const isCur = (M.y === today.getFullYear() && M.m === today.getMonth());
+    b.className = 'month-btn' + (i === curMonthIdx ? ' active' : '') + (isCur ? ' cur-month' : '');
+    b.textContent = M.shortLabel;
+    b.onclick = (function(idx){ return function(){ switchMonth(idx, true); }; })(i);
+    nav.appendChild(b);
+  });
 }
 
 // ══════════════════════════════════════════════════
@@ -785,12 +985,11 @@ function isShiftBlock(name) { // detect shift blocks
   return SHIFT_KEYWORDS.some(k => name.toLowerCase().includes(k));
 }
 
-// Parking blocks that are shift-related are system-managed:
-// in the left-side parking list they cannot be renamed or deleted
-// (but on canvas they remain fully delete/move/resize-able).
+// Parking blocks frozen by the user (right-click → Freeze) cannot be renamed
+// or deleted from the parking list, but ARE still draggable to the canvas
+// where the resulting placed block is fully editable.
 function isParkBlockLocked(b) {
-  if(!b || !b.name) return false;
-  return b.name.toLowerCase().includes('shift');
+  return !!(b && b.frozen);
 }
 
 function isSleepBlock(name) { // detect sleep blocks
@@ -814,7 +1013,7 @@ function updateCountdownGuides() { // draw ONE vertical countdown line from now 
   dz.querySelectorAll('.countdown-guide,.countdown-label,.countdown-cap').forEach(el => el.remove());
 
   const nowMin = windowStartKey ? getNowRenderMin() : getNowMinutes();
-  if(nowMin < 0 || nowMin > TOTAL) return; // now not in window — no line
+  if(nowMin < 0 || nowMin > getTotalMin()) return; // now not in window — no line
 
   const MAX_AHEAD = 720; // 12 hours in minutes
 
@@ -965,8 +1164,9 @@ tzEl.addEventListener('change', () => { tickClock(); rebuildRuler(); buildDropZo
 // ══════════════════════════════════════════════════
 function buildDropZone() { // build timeline background bands and hour lines
   const dz = document.getElementById('dz');
-  dz.querySelectorAll('.tod-band,.hour-line').forEach(el => el.remove());
-  const DAYS = 30;
+  dz.querySelectorAll('.tod-band,.hour-line,.minute-line').forEach(el => el.remove());
+  const DAYS = getWindowDays();
+  const showMinutes = (zoomIdx === ZOOM_LEVELS.length - 1); // faint minute grid only at deepest zoom
   for (let day=0; day<DAYS; day++) {
     const dayOffMin = day*1440;
     TOD_BANDS.forEach((band,bi) => {
@@ -984,6 +1184,16 @@ function buildDropZone() { // build timeline background bands and hour lines
       hl.style.top = m2y(dayOffMin+h*60)+'px';
       dz.appendChild(hl);
     }
+    // Faint minute grid — only when zoomed in deepest
+    if(showMinutes){
+      for (let mm=0; mm<1440; mm++){
+        if(mm%60===0) continue; // hour lines already drawn above
+        const ml = document.createElement('div');
+        ml.className = 'minute-line';
+        ml.style.top = m2y(dayOffMin+mm)+'px';
+        dz.appendChild(ml);
+      }
+    }
   }
   const last = document.createElement('div');
   last.className = 'hour-line day-break';
@@ -998,7 +1208,7 @@ function rebuildRuler() { // rebuild left-side time ruler showing actual dates
   const ruler = document.getElementById('ruler');
   ruler.innerHTML = '';
   const ws = (windowStartKey||getTodayKey()).split('-').map(Number);
-  for (let m=0; m<=TOTAL; m+=15) {
+  for (let m=0; m<=getTotalMin(); m+=15) {
     const y = m * PPM;
     const dayIdx = Math.floor(m / 1440);
     const minInDay = m % 1440;
@@ -1049,8 +1259,13 @@ function ensureNow() { // create now-line elements once
 
 function updateNow() { // update red now-line and future countdown guides
   ensureNow();
+  // Hide entirely if we're not on the current real-world month canvas
+  if(!isCurrentMonth()){
+    if(nowEl) nowEl.style.display = 'none';
+    return;
+  }
   const n = windowStartKey ? getNowRenderMin() : getNowMinutes();
-  if(n < 0 || n > TOTAL) {
+  if(n < 0 || n > getTotalMin()) {
     // Now is outside the window — hide the line
     if(nowEl) nowEl.style.display = 'none';
     return;
@@ -1077,7 +1292,7 @@ tSlider.addEventListener('input', () => {
 }); // slider moves timeline
 
 tlScroll.addEventListener('scroll', () => {
-  tSlider.value = Math.min(TOTAL, y2m(tlScroll.scrollTop));
+  tSlider.value = Math.min(getTotalMin(), y2m(tlScroll.scrollTop));
   updateSliderLabel();
 }); // scroll moves slider
 
@@ -1130,7 +1345,7 @@ syncColorUI();
 function openModal(eid=null) { // open create/edit block modal
   if (eid) {
     const guard = parkBlocks.find(b => b.id === eid);
-    if (guard && isParkBlockLocked(guard)) return; // shift-related parking block — cannot rename
+    if (guard && isParkBlockLocked(guard)) return; // frozen parking block — cannot rename
   }
   editId=eid;
   document.getElementById('mTitle').textContent = eid?'Edit Block':'New Block';
@@ -1189,11 +1404,11 @@ function renderParking() { // render left parking list
     el.style.background = toRgba(b.color);
     el.style.borderLeftColor = toRgba(b.color,false);
 
-    // Shift-related parking blocks are system-managed: no rename, no delete here.
-    // (User can still drag onto canvas, and on canvas they ARE deletable/moveable.)
+    // User-frozen parking blocks: cannot rename/delete from parking list,
+    // but can still be dragged to canvas. Right-click toggles freeze.
     const parkLocked = isParkBlockLocked(b);
     const lockMark = parkLocked
-      ? `<span class="p-lock-badge" title="System-managed shift block — cannot be renamed or deleted in parking. Move/delete on canvas instead.">\uD83D\uDD12</span>`
+      ? `<span class="p-lock-badge" title="Frozen — right-click to unfreeze. Still draggable to canvas.">\uD83D\uDD12</span>`
       : '';
     const editBtn = parkLocked
       ? ''
@@ -1217,8 +1432,20 @@ function renderParking() { // render left parking list
         ${delBtn}
       </div>`;
 
+    if(parkLocked) el.classList.add('p-block-frozen');
+    el.title = (el.title?el.title+'\n':'') + 'Right-click to ' + (parkLocked?'unfreeze':'freeze');
+
+    // Right-click toggles frozen state
+    el.addEventListener('contextmenu', ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      b.frozen = !b.frozen;
+      saveState();
+      renderParking();
+    });
+
     // Bind edit/delete buttons with proper event listeners (not inline onclick).
-    // Skip for locked parking blocks where these buttons aren't rendered.
+    // Skip for frozen parking blocks where these buttons aren't rendered.
     if(!parkLocked){
       el.querySelector('.p-edit-btn').addEventListener('click', ev => {
         ev.stopPropagation(); openModal(b.id);
@@ -1297,7 +1524,7 @@ function renderParking() { // render left parking list
 
 function delBlock(id) { // delete parked block and any placed copies
   const b = parkBlocks.find(x => x.id === id);
-  if (b && isParkBlockLocked(b)) return; // shift-related parking block — cannot delete from parking
+  if (b && isParkBlockLocked(b)) return; // frozen parking block — cannot delete from parking
   parkBlocks = parkBlocks.filter(b=>b.id!==id);
   placed.filter(p=>p.blockId===id).forEach(p=>p.el.remove());
   placed = placed.filter(p=>p.blockId!==id);
@@ -1419,18 +1646,12 @@ function selectBlock(id) { // select one placed block
 // ══════════════════════════════════════════════════
 // PLACE BLOCK ON TIMELINE
 // ══════════════════════════════════════════════════
-// Locked block prefixes — cannot be deleted or renamed by user
-// Canvas-side locked block prefixes — system-managed blocks the user cannot
-// delete, move, or resize on the timeline. Kickstart is a live counter from
-// wake → now and stays locked. Auto-shift / pre-shift / post-shift blocks are
-// NOT in this list: in parking they are locked from rename/delete, but once
-// placed on the canvas the user can freely delete or rearrange them.
-// Note: _isCoreShift mirroring to Calendar/Vanity is independent of this and
-// still fires from auto_shift_* IDs regardless of locked status.
-const LOCKED_BLOCK_PREFIXES = ['auto_kickstart_'];
-function isLockedBlock(id) {
-  return LOCKED_BLOCK_PREFIXES.some(p => id && id.startsWith(p));
-}
+// Per user spec: NO block on the canvas is permanent. Every placed block
+// is freely deletable, movable, and resizable — including auto-kickstart,
+// auto-shift, and ZNF-spawned deep-work blocks. The legacy
+// LOCKED_BLOCK_PREFIXES system has been removed.
+// ══════════════════════════════════════════════════
+function isLockedBlock(id) { return false; }
 
 // Broadcast core shift blocks (_isCoreShift) to parent → Calendar/Vanity/AbhiPlanner
 function broadcastCoreShifts() {
@@ -1455,7 +1676,6 @@ function broadcastCoreShifts() {
 
 function placeBlock(blockId, name, color, startMin, duration, existingId, existingPlacedAt, existingDateKey) {
   const id = existingId || ('p'+Date.now()+Math.random());
-  const locked = isLockedBlock(id);
   const _isCoreShift = !!(existingId && existingId.startsWith('auto_shift_'));
 
   // Compute renderMin: window-relative offset from windowStartKey midnight
@@ -1472,22 +1692,17 @@ function placeBlock(blockId, name, color, startMin, duration, existingId, existi
   }
 
   const el = document.createElement('div');
-  el.className = 't-block' + (locked ? ' locked-block' : '');
+  el.className = 't-block';
   el.style.top    = m2y(renderMin)+'px';
   el.style.height = Math.max(26,duration*PPM)+'px';
   el.style.background      = toRgba(color);
   el.style.borderLeftColor = toRgba(color,false);
   el.style.zIndex = 5;
-  if(locked) el.title = 'System-managed block — cannot be deleted or moved';
-
-  const lockBadge = locked ? '<span style="font-size:8px;opacity:.55;margin-left:3px;">🔒</span>' : '';
-  const delBtn = locked ? '' : `<button class="t-block-del" onclick="removePl('${id}')">✕</button>`;
-  const resizeStyle = locked ? ' style="pointer-events:none;opacity:0;"' : '';
 
   el.innerHTML = `
-    ${delBtn}
+    <button class="t-block-del" onclick="removePl('${id}')">✕</button>
     <div class="t-block-header">
-      <span class="t-block-name">${name}</span>${lockBadge}
+      <span class="t-block-name">${name}</span>
     </div>
     <div class="t-times">
       <span class="t-start">${fmtHHMM(renderMin)}</span>
@@ -1496,7 +1711,7 @@ function placeBlock(blockId, name, color, startMin, duration, existingId, existi
       <span class="t-dur">(${duration}m)</span>
     </div>
     <div class="t-counter"></div>
-    <div class="t-resize"${resizeStyle}></div>`;
+    <div class="t-resize"></div>`;
 
   const pb = {
     id, blockId,
@@ -1505,11 +1720,15 @@ function placeBlock(blockId, name, color, startMin, duration, existingId, existi
     dateKey: blockDateKey,
     duration, color:{...color}, name, el,
     placedAt: existingPlacedAt || Date.now(),
-    locked, _isCoreShift
+    locked: false, _isCoreShift
   };
   if (!existingId) pb.dateKey = getDateKeyForRenderMin(renderMin);
   placed.push(pb);
   document.getElementById('dz').appendChild(el);
+
+  // Hide if it falls outside the visible month canvas
+  const dayOff = getRenderMinForDateKey(pb.dateKey);
+  if(dayOff < 0 || dayOff >= getTotalMin()) el.style.display = 'none';
 
   // Click-select
   el.addEventListener('mousedown', ev => {
@@ -1517,61 +1736,57 @@ function placeBlock(blockId, name, color, startMin, duration, existingId, existi
     selectBlock(id);
   });
 
-  // Drag move — disabled for locked blocks
-  if (!locked) {
-    el.addEventListener('mousedown', ev => {
-      if (ev.target.classList.contains('t-resize')||ev.target.classList.contains('t-block-del')) return;
-      if (ev.button!==0) return;
-      ev.preventDefault(); ev.stopPropagation();
-      const startY0=ev.clientY, startScroll=tlScroll.scrollTop, startMin0=pb.startMin;
-      el.classList.add('dragging');
-      const mv=e2=>{
-        const dy=e2.clientY-startY0, ds=tlScroll.scrollTop-startScroll;
-        let newMin=snap5(Math.max(0,startMin0+y2m(dy+ds)));
-        const SNAP=10;
-        placed.forEach(other=>{
-          if(other.id===id) return;
-          if(Math.abs(newMin-(other.startMin+other.duration))<=SNAP) newMin=other.startMin+other.duration;
-          if(Math.abs((newMin+pb.duration)-other.startMin)<=SNAP) newMin=other.startMin-pb.duration;
-        });
-        pb.startMin=Math.max(0,newMin);
-        el.style.top=m2y(pb.startMin)+'px';
-        checkOverlaps(); updateNotepad(); updateCountdownGuides();
-      };
-      const up=()=>{
-        document.removeEventListener('mousemove',mv);
-        document.removeEventListener('mouseup',up);
-        el.classList.remove('dragging');
-        pb.dateKey = getDateKeyForRenderMin(pb.startMin);
-        checkOverlaps(); updateNotepad(); updateCountdownGuides();
-        startCountersIfNeeded(); broadcastCoreShifts();
-      };
-      document.addEventListener('mousemove',mv);
-      document.addEventListener('mouseup',up);
-    });
-  }
+  // Drag move
+  el.addEventListener('mousedown', ev => {
+    if (ev.target.classList.contains('t-resize')||ev.target.classList.contains('t-block-del')) return;
+    if (ev.button!==0) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const startY0=ev.clientY, startScroll=tlScroll.scrollTop, startMin0=pb.startMin;
+    el.classList.add('dragging');
+    const mv=e2=>{
+      const dy=e2.clientY-startY0, ds=tlScroll.scrollTop-startScroll;
+      let newMin=snap5(Math.max(0,startMin0+y2m(dy+ds)));
+      const SNAP=10;
+      placed.forEach(other=>{
+        if(other.id===id) return;
+        if(Math.abs(newMin-(other.startMin+other.duration))<=SNAP) newMin=other.startMin+other.duration;
+        if(Math.abs((newMin+pb.duration)-other.startMin)<=SNAP) newMin=other.startMin-pb.duration;
+      });
+      pb.startMin=Math.max(0,newMin);
+      el.style.top=m2y(pb.startMin)+'px';
+      checkOverlaps(); updateNotepad(); updateCountdownGuides();
+    };
+    const up=()=>{
+      document.removeEventListener('mousemove',mv);
+      document.removeEventListener('mouseup',up);
+      el.classList.remove('dragging');
+      pb.dateKey = getDateKeyForRenderMin(pb.startMin);
+      checkOverlaps(); updateNotepad(); updateCountdownGuides();
+      startCountersIfNeeded(); broadcastCoreShifts();
+    };
+    document.addEventListener('mousemove',mv);
+    document.addEventListener('mouseup',up);
+  });
 
-  // Resize — disabled for locked blocks
-  if (!locked) {
-    const rh = el.querySelector('.t-resize');
-    if(rh) rh.addEventListener('mousedown',ev=>{
-      ev.preventDefault(); ev.stopPropagation();
-      const sy=ev.clientY, sd=pb.duration;
-      const mv=e2=>{
-        const dm=Math.round((e2.clientY-sy)/PPM/5)*5;
-        pb.duration=Math.max(5,sd+dm);
-        el.style.height=Math.max(26,pb.duration*PPM)+'px';
-        checkOverlaps(); updateNotepad(); updateCountdownGuides();
-      };
-      const up=()=>{
-        document.removeEventListener('mousemove',mv);
-        document.removeEventListener('mouseup',up);
-        startCountersIfNeeded(); updateNotepad(); updateCountdownGuides();
-      };
-      document.addEventListener('mousemove',mv);
-      document.addEventListener('mouseup',up);
-    });
-  }
+  // Resize
+  const rh = el.querySelector('.t-resize');
+  if(rh) rh.addEventListener('mousedown',ev=>{
+    ev.preventDefault(); ev.stopPropagation();
+    const sy=ev.clientY, sd=pb.duration;
+    const mv=e2=>{
+      const dm=Math.round((e2.clientY-sy)/PPM/5)*5;
+      pb.duration=Math.max(5,sd+dm);
+      el.style.height=Math.max(26,pb.duration*PPM)+'px';
+      checkOverlaps(); updateNotepad(); updateCountdownGuides();
+    };
+    const up=()=>{
+      document.removeEventListener('mousemove',mv);
+      document.removeEventListener('mouseup',up);
+      startCountersIfNeeded(); updateNotepad(); updateCountdownGuides();
+    };
+    document.addEventListener('mousemove',mv);
+    document.addEventListener('mouseup',up);
+  });
 
   selectBlock(id); checkOverlaps(); updateNotepad();
   if(!existingId) syncToShared();
@@ -1580,7 +1795,6 @@ function placeBlock(blockId, name, color, startMin, duration, existingId, existi
 }
 
 function removePl(id) {
-  if(isLockedBlock(id)) return; // locked blocks cannot be removed
   const p=placed.find(p=>p.id===id);
   if(p){ p.el.remove(); placed=placed.filter(q=>q.id!==id); }
   if(selId===id) selId=null;
@@ -1763,14 +1977,26 @@ document.getElementById('btnArchiveNow').onclick = () => {
 // ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
-initWindow(); // set windowStartKey = today, set date picker value
+initWindow(); // pick current month from DAYFLOW_MONTHS
+applyTimelineHeight(); // size timeline-inner for current zoom × month
 rebuildRuler(); // build time ruler with actual dates
 buildDropZone(); // build timeline backgrounds
-updateNow(); // show now line
+buildMonthNav(); // 12-month strip below timeline
+updateZoomBadge(); // initialize zoom level badge
+updateNow(); // show now line (only on current month)
 setInterval(updateNow, 10000); // refresh now line every 10s
 renderParking(); // render parked blocks
 updateSliderLabel(); // initialize slider label
 startCounterInterval(); // start live counters
+
+// Zoom buttons
+(function(){
+  var zin=document.getElementById('btnZoomIn'); if(zin) zin.onclick=function(){zoomIn();};
+  var zout=document.getElementById('btnZoomOut'); if(zout) zout.onclick=function(){zoomOut();};
+})();
+
+// Sync slider max to current month
+if(typeof tSlider!=='undefined' && tSlider) tSlider.max = getTotalMin();
 
 // Set jump date input to today
 (function(){ const jd=document.getElementById('jumpDate'); if(jd) jd.value=getTodayKey(); })();
@@ -1790,6 +2016,47 @@ savedPlaced.forEach(pb => {
 });
 // Sync to shared store on load so Calendar always has fresh data
 syncToShared();
+
+// ZNF reload-resilience + lazy-iframe catch-up:
+//   znf_active    → placeholder for an in-flight session (set on ON, cleared on OFF)
+//   znf_completed → queue of finished sessions DayFlow hasn't yet rendered
+// Both are drained here on init.
+(function(){
+  // 1. Drain completed-but-unrendered queue
+  try{
+    var qRaw = localStorage.getItem('znf_completed');
+    if(qRaw){
+      var q = JSON.parse(qRaw);
+      if(Array.isArray(q)){
+        q.forEach(function(s){
+          if(!s||!s.sessionId||!s.startMs||!s.endMs) return;
+          var bid='auto_znf_'+s.sessionId;
+          if(placed.some(function(p){return p.id===bid;})) return; // already shown
+          var d=new Date(s.startMs);
+          var dayKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+          var startMin=d.getHours()*60+d.getMinutes();
+          var dur=Math.max(1,Math.round((s.endMs-s.startMs)/60000));
+          placeBlock('znf','\u2708 Deep Work',{r:250,g:204,b:21,a:78},startMin,dur,bid,s.startMs,dayKey);
+        });
+      }
+      localStorage.removeItem('znf_completed');
+    }
+  }catch(_){}
+  // 2. Active in-flight session — drop a placeholder
+  try{
+    var raw = localStorage.getItem('znf_active');
+    if(!raw) return;
+    var z = JSON.parse(raw);
+    if(!z || !z.sessionId || !z.startMs) return;
+    var bid = 'auto_znf_'+z.sessionId;
+    if(placed.some(function(p){return p.id===bid;})) return;
+    var d = new Date(z.startMs);
+    var dayKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var startMin = d.getHours()*60 + d.getMinutes();
+    var elapsedMin = Math.max(1, Math.round((Date.now() - z.startMs)/60000));
+    placeBlock('znf','\u2708 Deep Work', {r:250,g:204,b:21,a:78}, startMin, elapsedMin, bid, z.startMs, dayKey);
+  }catch(_){}
+})();
 
 // Auto-save on any change
 const origUpdateNotepad = updateNotepad;
