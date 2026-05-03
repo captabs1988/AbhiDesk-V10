@@ -75,16 +75,55 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .timeline-inner{position:relative;display:flex;}  /* timeline body — height set dynamically */
 
 .time-ruler{width:62px;min-width:62px;position:relative;border-right:2px solid var(--border);background:var(--surface);flex-shrink:0;} /* left time ruler */
-.time-label{position:absolute;right:6px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);transform:translateY(-50%);white-space:nowrap;pointer-events:none;} /* time labels */
-.tl-line{position:absolute;left:0;right:0;height:1px;background:var(--border);opacity:.5;pointer-events:none;} /* ruler line */
-.tl-line.hour{opacity:1;background:var(--border2);} /* hourly line */
-.tl-line.day-start{background:#7c3aed;opacity:.35;height:2px;} /* day start line */
-.drop-zone{flex:1;position:relative;} /* right timeline canvas */
-.tod-band{position:absolute;left:0;right:0;pointer-events:none;z-index:0;} /* time-of-day background band */
-.hour-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.09);pointer-events:none;z-index:1;} /* hour guide */
-.hour-line.day-break{background:rgba(124,58,237,.25);height:2px;}  /* day break guide */
-.minute-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.04);pointer-events:none;z-index:1;} /* faint minute guide — only at deepest zoom */
+.time-label{position:absolute;right:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text2);font-weight:600;transform:translateY(-50%);white-space:nowrap;pointer-events:none;letter-spacing:.3px;} /* time labels */
+.tl-line{position:absolute;left:0;right:0;height:1px;background:var(--border2);opacity:.8;pointer-events:none;} /* ruler line */
+.tl-line.hour{opacity:1;background:var(--text2);height:1px;} /* hourly line */
+.tl-line.day-start{background:#7c3aed;opacity:.85;height:3px;} /* day start line */
+.drop-zone{flex:1;position:relative;background:var(--bg);} /* right timeline canvas — single solid background */
+.tod-band{position:absolute;left:0;right:0;pointer-events:none;z-index:0;} /* gradient time-of-day band — only rendered in gradient mode */
+.hour-line{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.10);pointer-events:none;z-index:1;} /* hour guide */
+[data-theme="light"] .hour-line{background:rgba(0,0,0,.16);}
+.hour-line.day-break{background:#7c3aed;height:4px;opacity:.85;}  /* day break guide — thick & prominent */
+.minute-line{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.04);pointer-events:none;z-index:1;} /* faint minute guide — only at deepest zoom */
 [data-theme="light"] .minute-line{background:rgba(0,0,0,.05);}
+
+/* PROMINENT DATE STRIP — spans full canvas width at each day boundary, can't be missed when scrolling */
+.day-marker{position:absolute;left:0;right:0;height:24px;z-index:3;pointer-events:none;display:flex;align-items:center;padding:0 10px 0 70px;font-family:'Space Mono',monospace;font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;background:linear-gradient(90deg,rgba(124,58,237,.32),rgba(124,58,237,.12) 60%,rgba(124,58,237,.04));color:#7c3aed;text-shadow:0 1px 0 rgba(255,255,255,.18);border-bottom:2px solid rgba(124,58,237,.55);}
+.day-marker.today{background:linear-gradient(90deg,rgba(67,97,238,.36),rgba(67,97,238,.14) 60%,rgba(67,97,238,.04));color:#4361ee;border-bottom-color:rgba(67,97,238,.7);}
+[data-canvas-mode="dark"] .day-marker{color:#c4b5fd;text-shadow:0 1px 0 rgba(0,0,0,.5);background:linear-gradient(90deg,rgba(167,139,250,.32),rgba(167,139,250,.10) 60%,rgba(167,139,250,.02));border-bottom-color:rgba(167,139,250,.6);}
+[data-canvas-mode="dark"] .day-marker.today{color:#93c5fd;background:linear-gradient(90deg,rgba(96,165,250,.36),rgba(96,165,250,.12) 60%,rgba(96,165,250,.03));border-bottom-color:rgba(96,165,250,.7);}
+
+/* CANVAS MODE BUTTON GROUP (in topbar) */
+.cm-group{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;background:var(--surface);}
+.cm-btn{background:transparent;border:none;padding:5px 9px;font-size:13px;cursor:pointer;border-right:1px solid var(--border);color:var(--text2);line-height:1;transition:background .12s,color .12s;}
+.cm-btn:last-child{border-right:none;}
+.cm-btn:hover{background:var(--surface2);}
+.cm-btn.active{background:var(--accent);color:#fff;}
+
+/* CANVAS MODE — WHITE */
+#tlScroll[data-canvas-mode="white"] .drop-zone{background:#ffffff;}
+#tlScroll[data-canvas-mode="white"] .time-ruler{background:#f4f6fb;}
+#tlScroll[data-canvas-mode="white"] .time-label{color:#1a2040;}
+#tlScroll[data-canvas-mode="white"] .tl-line{background:#cbd2e3;opacity:.9;}
+#tlScroll[data-canvas-mode="white"] .tl-line.hour{background:#5a6388;}
+#tlScroll[data-canvas-mode="white"] .hour-line{background:rgba(0,0,0,.18);}
+#tlScroll[data-canvas-mode="white"] .minute-line{background:rgba(0,0,0,.06);}
+
+/* CANVAS MODE — DARK */
+#tlScroll[data-canvas-mode="dark"] .drop-zone{background:#0e1320;}
+#tlScroll[data-canvas-mode="dark"] .time-ruler{background:#161c2e;}
+#tlScroll[data-canvas-mode="dark"] .time-label{color:#d8dcea;}
+#tlScroll[data-canvas-mode="dark"] .tl-line{background:#3a4566;opacity:.9;}
+#tlScroll[data-canvas-mode="dark"] .tl-line.hour{background:#8a93b8;}
+#tlScroll[data-canvas-mode="dark"] .hour-line{background:rgba(255,255,255,.13);}
+#tlScroll[data-canvas-mode="dark"] .minute-line{background:rgba(255,255,255,.05);}
+
+/* CANVAS MODE — GRADIENT (time-of-day bands) */
+#tlScroll[data-canvas-mode="gradient"] .drop-zone{background:#10172a;}
+#tlScroll[data-canvas-mode="gradient"] .time-ruler{background:var(--surface);}
+#tlScroll[data-canvas-mode="gradient"] .time-label{color:var(--text2);}
+#tlScroll[data-canvas-mode="gradient"] .hour-line{background:rgba(255,255,255,.10);}
+#tlScroll[data-canvas-mode="gradient"] .minute-line{background:rgba(255,255,255,.04);}
 
 /* MONTH NAV STRIP */
 .month-nav{display:flex;align-items:center;gap:4px;padding:5px 10px;background:var(--surface);border-top:2px solid var(--border);flex-shrink:0;overflow-x:auto;}
@@ -173,7 +212,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 [data-theme="light"] .timeline-inner{background:var(--bg);}
 [data-theme="light"] .tz-select,[data-theme="light"] .btn{background:var(--surface);border-color:var(--border);color:var(--text2);}
 [data-theme="light"] .live-clock{background:#eef1fd;border-color:#c8d4f8;}
-[data-theme="light"] .tod-band{filter:invert(1) hue-rotate(180deg) opacity(.4);}
 [data-theme="light"] .time-ruler{background:var(--surface);}
 [data-theme="light"] #notepadText{background:var(--surface);color:var(--text);}
 
@@ -299,6 +337,11 @@ window.addEventListener('message',function(e){
   </div>
   <div class="topbar-right">
     <div class="abhisync-wrap"><button class="abhisync-btn" id="abhisyncBtn" onclick="triggerParentSync()" title="Sync all AbhiDesk data"><span class="sync-icon">🔄</span> <span id="abhisyncLabel">Sync</span></button></div>
+    <div class="cm-group" title="Canvas color mode">
+      <button class="cm-btn" data-cm="white" title="White canvas">☀</button>
+      <button class="cm-btn" data-cm="dark" title="Dark canvas">🌑</button>
+      <button class="cm-btn" data-cm="gradient" title="Day-cycle gradient (night → morning → afternoon → evening → night)">🌅</button>
+    </div>
     <button class="btn" id="btnNow">⦿ Now</button>
     <button class="btn" id="btnExport">📤 Export</button>
     <button class="btn primary" id="btnNew">+ New Block</button>
@@ -1162,22 +1205,30 @@ tzEl.addEventListener('change', () => { tickClock(); rebuildRuler(); buildDropZo
 // ══════════════════════════════════════════════════
 // BUILD DROP ZONE
 // ══════════════════════════════════════════════════
-function buildDropZone() { // build timeline background bands and hour lines
+function buildDropZone() { // build timeline hour grid + day markers, mode-aware bg
   const dz = document.getElementById('dz');
+  const inner = document.querySelector('.timeline-inner');
   dz.querySelectorAll('.tod-band,.hour-line,.minute-line').forEach(el => el.remove());
+  if(inner) inner.querySelectorAll('.day-marker').forEach(el => el.remove());
   const DAYS = getWindowDays();
   const showMinutes = (zoomIdx === ZOOM_LEVELS.length - 1); // faint minute grid only at deepest zoom
+  const inGradient = (canvasMode === 'gradient');
+  const ws = (windowStartKey||getTodayKey()).split('-').map(Number);
+  const todayKey = getTodayKey();
   for (let day=0; day<DAYS; day++) {
     const dayOffMin = day*1440;
-    TOD_BANDS.forEach((band,bi) => {
-      const bandEl = document.createElement('div');
-      bandEl.className = 'tod-band';
-      bandEl.style.top    = m2y(dayOffMin+band.start)+'px';
-      bandEl.style.height = m2y(band.end-band.start)+'px';
-      bandEl.style.backgroundColor = TOD_BASE[bi];
-      bandEl.style.backgroundImage = band.bg;
-      dz.appendChild(bandEl);
-    });
+    // Time-of-day gradient bands — only in gradient mode
+    if(inGradient){
+      TOD_BANDS.forEach((band,bi) => {
+        const bandEl = document.createElement('div');
+        bandEl.className = 'tod-band';
+        bandEl.style.top    = m2y(dayOffMin+band.start)+'px';
+        bandEl.style.height = m2y(band.end-band.start)+'px';
+        bandEl.style.backgroundColor = TOD_BASE[bi];
+        bandEl.style.backgroundImage = band.bg;
+        dz.appendChild(bandEl);
+      });
+    }
     for (let h=0; h<24; h++) {
       const hl = document.createElement('div');
       hl.className = 'hour-line'+(h===0?' day-break':'');
@@ -1187,18 +1238,48 @@ function buildDropZone() { // build timeline background bands and hour lines
     // Faint minute grid — only when zoomed in deepest
     if(showMinutes){
       for (let mm=0; mm<1440; mm++){
-        if(mm%60===0) continue; // hour lines already drawn above
+        if(mm%60===0) continue;
         const ml = document.createElement('div');
         ml.className = 'minute-line';
         ml.style.top = m2y(dayOffMin+mm)+'px';
         dz.appendChild(ml);
       }
     }
+    // Prominent day-marker strip across the full canvas width
+    if(inner){
+      const dayD = new Date(ws[0], ws[1]-1, ws[2] + day);
+      const dKey = dayD.getFullYear()+'-'+String(dayD.getMonth()+1).padStart(2,'0')+'-'+String(dayD.getDate()).padStart(2,'0');
+      const isToday = (todayKey === dKey);
+      const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const monNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const marker = document.createElement('div');
+      marker.className = 'day-marker' + (isToday ? ' today' : '');
+      marker.style.top = m2y(dayOffMin)+'px';
+      marker.textContent = (isToday ? '▶ TODAY • ' : '') + dayNames[dayD.getDay()] + ', ' + monNames[dayD.getMonth()] + ' ' + dayD.getDate();
+      inner.appendChild(marker);
+    }
   }
   const last = document.createElement('div');
   last.className = 'hour-line day-break';
   last.style.top = m2y(DAYS*1440)+'px';
   dz.appendChild(last);
+}
+
+// ══════════════════════════════════════════════════
+// CANVAS COLOUR MODE
+// ══════════════════════════════════════════════════
+let canvasMode = 'white'; // initialised from localStorage in init
+function setCanvasMode(mode){
+  if(['white','dark','gradient'].indexOf(mode) < 0) mode = 'white';
+  canvasMode = mode;
+  try{ localStorage.setItem('dayflow_canvas_mode', mode); }catch(_){}
+  const ts = document.getElementById('tlScroll');
+  if(ts) ts.dataset.canvasMode = mode;
+  // Refresh active button highlight
+  document.querySelectorAll('.cm-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.cm === mode);
+  });
+  buildDropZone();
 }
 
 // ══════════════════════════════════════════════════
@@ -1224,8 +1305,8 @@ function rebuildRuler() { // rebuild left-side time ruler showing actual dates
       lb.className='time-label';
       lb.style.top = y+'px';
       lb.style.color = isToday ? '#4361ee' : '#7c3aed';
-      lb.style.fontWeight = '700';
-      lb.style.fontSize = '8px';
+      lb.style.fontWeight = '800';
+      lb.style.fontSize = '11px';
       const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       lb.textContent = (isToday ? '▶ TODAY' : dayNames[dayD.getDay()]+' ')+dayD.getDate()+'/'+(dayD.getMonth()+1);
       ruler.appendChild(lb);
@@ -1979,8 +2060,19 @@ document.getElementById('btnArchiveNow').onclick = () => {
 // ══════════════════════════════════════════════════
 initWindow(); // pick current month from DAYFLOW_MONTHS
 applyTimelineHeight(); // size timeline-inner for current zoom × month
+// Determine initial canvas mode (saved → else match parent theme)
+(function(){
+  var saved = null;
+  try{ saved = localStorage.getItem('dayflow_canvas_mode'); }catch(_){}
+  if(!saved){
+    saved = (document.documentElement.getAttribute('data-theme') === 'light') ? 'white' : 'dark';
+  }
+  canvasMode = saved;
+  var ts = document.getElementById('tlScroll');
+  if(ts) ts.dataset.canvasMode = canvasMode;
+})();
 rebuildRuler(); // build time ruler with actual dates
-buildDropZone(); // build timeline backgrounds
+buildDropZone(); // build timeline backgrounds (mode-aware)
 buildMonthNav(); // 12-month strip below timeline
 updateZoomBadge(); // initialize zoom level badge
 updateNow(); // show now line (only on current month)
@@ -1994,6 +2086,12 @@ startCounterInterval(); // start live counters
   var zin=document.getElementById('btnZoomIn'); if(zin) zin.onclick=function(){zoomIn();};
   var zout=document.getElementById('btnZoomOut'); if(zout) zout.onclick=function(){zoomOut();};
 })();
+
+// Canvas-mode buttons
+document.querySelectorAll('.cm-btn').forEach(function(b){
+  b.classList.toggle('active', b.dataset.cm === canvasMode);
+  b.addEventListener('click', function(){ setCanvasMode(b.dataset.cm); });
+});
 
 // Sync slider max to current month
 if(typeof tSlider!=='undefined' && tSlider) tSlider.max = getTotalMin();
