@@ -600,10 +600,22 @@ TABS.forEach(function(id){var v=localStorage.getItem('adlbl_'+id);if(v){var el=d
   function zs2m(ms){return +(ms/60000).toFixed(1);}
   function zsave(){try{localStorage.setItem('znf_sessions',JSON.stringify(_S));}catch(e){} if(_S.length){const _last=_S[_S.length-1];postToSheet('zenfocus',[{start:_last.start||'',end:_last.end||'',dur:_last.dur||0}]);}}
 
+  // Helper: post a message to the DayFlow iframe
+  function _znfPostDF(payload){
+    try{
+      var fr=document.getElementById('fr-dayflow');
+      if(fr && fr.contentWindow) fr.contentWindow.postMessage(payload,'*');
+    }catch(_){}
+  }
+
   window.znfToggle=function(){
     if(!_A){
       _A=new Date();
       _setOn();
+      // Mark active session for reload-resilience + notify DayFlow to drop a Deep Work block
+      var _znfSid=String(_A.getTime());
+      try{ localStorage.setItem('znf_active',JSON.stringify({sessionId:_znfSid,startMs:_A.getTime()})); }catch(_){}
+      _znfPostDF({type:'znf_start',sessionId:_znfSid,startMs:_A.getTime()});
       _T=setInterval(function(){
         var diff=Date.now()-_A.getTime();
         var s=Math.floor(diff/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
@@ -613,6 +625,21 @@ TABS.forEach(function(id){var v=localStorage.getItem('adlbl_'+id);if(v){var el=d
       clearInterval(_T);_T=null;
       var end=new Date(),dur=end.getTime()-_A.getTime();
       _S.push({start:_A.toISOString(),end:end.toISOString(),dur:dur});
+      // Notify DayFlow to finalize the Deep Work block to actual duration.
+      // Also append to znf_completed queue so DayFlow picks it up on next load
+      // even if its iframe wasn't open when ZNF stopped.
+      try{
+        var _znfRaw=localStorage.getItem('znf_active');
+        var _znfAct=_znfRaw?JSON.parse(_znfRaw):null;
+        var _znfSid2=(_znfAct&&_znfAct.sessionId)||String(_A.getTime());
+        var _qRaw=localStorage.getItem('znf_completed');
+        var _q=_qRaw?JSON.parse(_qRaw):[];
+        if(!Array.isArray(_q)) _q=[];
+        _q.push({sessionId:_znfSid2,startMs:_A.getTime(),endMs:end.getTime()});
+        localStorage.setItem('znf_completed',JSON.stringify(_q));
+        _znfPostDF({type:'znf_stop',sessionId:_znfSid2,startMs:_A.getTime(),endMs:end.getTime()});
+        localStorage.removeItem('znf_active');
+      }catch(_){}
       zsave();_A=null;
       document.getElementById('znf-clk').textContent='00:00:00';
       _setOff();_zrender();
