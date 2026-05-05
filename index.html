@@ -221,6 +221,7 @@ table.tbl input[type=time]:focus{border-bottom-color:var(--accent);background:rg
 <button class="tab" id="tab-shifts" onclick="switchTab('shifts')" ondblclick="renameTab('shifts')"><span>💼</span><span id="lbl-shifts">Shift Tracker</span></button>
 <button class="tab" id="tab-settings" onclick="switchTab('settings')" ondblclick="renameTab('settings')"><span>⚙️</span><span id="lbl-settings">Settings</span></button>
 <button class="tab" id="tab-help" onclick="switchTab('help')" ondblclick="renameTab('help')"><span>❓</span><span id="lbl-help">Help</span></button>
+<button class="tab" id="tab-dairy" onclick="switchTab('dairy')" ondblclick="renameTab('dairy')"><span>📓</span><span id="lbl-dairy">Dairy</span></button>
 <div id="abhisyncWrap" style="margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0;padding-right:6px;height:36px;">
   <span id="abhisyncStatus" style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;"></span>
   <!-- Folder indicator -->
@@ -372,6 +373,7 @@ table.tbl input[type=time]:focus{border-bottom-color:var(--accent);background:rg
 <div class="panel" id="panel-fitlog"></div>
 <div class="panel" id="panel-settings"></div>
 <div class="panel" id="panel-help"></div>
+<div class="panel" id="panel-dairy"></div>
 <div class="panel active" id="tracker-panel">
 <div class="toolbar">
 <h2>// 2026 Daily Log</h2>
@@ -534,8 +536,8 @@ var APP_URIS = {
 }
 var ISRC=APP_URIS;
 
-var TABS=['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts','settings','help'];
-var PANEL={tracker:'tracker-panel',pledge:'pledge-panel',sheet:'sheet-panel',dayflow:'panel-dayflow',abhiplanner:'panel-abhiplanner',codetrack:'panel-codetrack',breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings',help:'panel-help'};
+var TABS=['tracker','pledge','sheet','dayflow','abhiplanner','codetrack','breathe','znf','vanity','fitlog','calendar','shifts','settings','help','dairy'];
+var PANEL={tracker:'tracker-panel',pledge:'pledge-panel',sheet:'sheet-panel',dayflow:'panel-dayflow',abhiplanner:'panel-abhiplanner',codetrack:'panel-codetrack',breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings',help:'panel-help',dairy:'panel-dairy'};
 var loaded={tracker:true,pledge:true,sheet:true};
 
 function switchTab(id){
@@ -557,6 +559,7 @@ function switchTab(id){
   if(id==='fitlog'&&window._fitlogRender)window._fitlogRender();
   if(id==='help'&&window._helpRender)window._helpRender();
   if(id==='settings'&&window._settingsRender)window._settingsRender();
+  if(id==='dairy'&&window._dairyRender)window._dairyRender();
 }
 
 function renameTab(id){
@@ -728,7 +731,7 @@ function _applyHidden(){
   }
   var pidMap={tracker:'tracker-panel',pledge:'pledge-panel',sheet:'sheet-panel',
               dayflow:'panel-dayflow',abhiplanner:'panel-abhiplanner',codetrack:'panel-codetrack',
-              breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings',help:'panel-help'};
+              breathe:'panel-breathe',znf:'panel-znf',vanity:'panel-vanity',fitlog:'panel-fitlog',calendar:'panel-calendar',shifts:'panel-shifts',settings:'panel-settings',help:'panel-help',dairy:'panel-dairy'};
   _hidden.forEach(function(tid){
     var te=document.getElementById('tab-'+tid);
     if(te)te.style.cssText='display:none!important;';
@@ -882,6 +885,45 @@ function slept(sl,wu,sameDay){
 }
 function setRMode(v){rMode=parseInt(v);build();}
 
+// ════════════════════════════════════════════════════════
+// DAYFLOW KICKSTART BRIDGE (Fix Part 5)
+// ────────────────────────────────────────────────────────
+// Single source of truth for wake/work-start → DayFlow Kickstart messaging.
+// Called from FitLog wake/workStart inputs, Daily Log wake/workStart inputs,
+// and prodStart(). Sends BOTH wake + workStart so DayFlow can build a proper
+// start→end Kickstart block (was previously sending wake only with end=now).
+// Triggers regardless of input order — works whichever value arrives first.
+// ════════════════════════════════════════════════════════
+function notifyDayflowKickstart(dateKey){
+  if(!dateKey)return;
+  try{
+    var row=(D&&D[dateKey])||{};
+    var wake=row.wake||'';
+    var ws=row.workStart||'';
+    if(!wake)return; // wake is required to draw a block at all
+    var wParts=wake.split(':');
+    var msg={
+      type:'dayflow_kickstart',
+      dateKey:dateKey,
+      wakeHH:parseInt(wParts[0]),
+      wakeMM:parseInt(wParts[1])||0
+    };
+    if(ws){
+      var sParts=ws.split(':');
+      msg.workStartHH=parseInt(sParts[0]);
+      msg.workStartMM=parseInt(sParts[1])||0;
+    }
+    var dfFr=document.getElementById('fr-dayflow');
+    if(dfFr&&dfFr.contentWindow){
+      try{dfFr.contentWindow.postMessage(msg,'*');}catch(_){}
+    }
+    // Notify the inline Dairy panel too — wake/work-start drives its header strip
+    if(typeof window.dairyOnFitlogChange==='function'){
+      try{window.dairyOnFitlogChange(dateKey);}catch(_){}
+    }
+  }catch(err){console.warn('[notifyDayflowKickstart]',err);}
+}
+
 function prodStart(){
   var now=new Date();var key=dk(now);
   var t=pad(now.getHours())+':'+pad(now.getMinutes());
@@ -914,6 +956,8 @@ function prodStart(){
   if(apFr&&apFr.contentWindow){
     try{apFr.contentWindow.postMessage({type:'prodStart',iso:key,workStart:t,wake:wakeTime},'*');}catch(e){}
   }
+  // ── Send Kickstart to DayFlow (Fix Part 5) ──
+  notifyDayflowKickstart(key);
 }
 
 function refreshGap(key){
@@ -996,20 +1040,26 @@ function build(){
     wi.type='time';wi.value=row.wake||'';wi.id='wu-'+key;
     (function(k){wi.onchange=function(){
       if(!D[k])D[k]={};D[k].wake=this.value;sv();refreshGap(k);refreshSlept(k);
-      // Fix 4: send Kickstart block to DayFlow if this is today
-      var today=new Date();var todayKey=dk(today);
-      if(k===todayKey&&this.value){
-        var parts=this.value.split(':');
-        var dfFr=document.getElementById('fr-dayflow');
-        if(dfFr&&dfFr.contentWindow){
-          try{dfFr.contentWindow.postMessage({type:'dayflow_kickstart',wakeHH:parseInt(parts[0]),wakeMM:parseInt(parts[1])},'*');}catch(ex){}
-        }
-      }
+      // Sync to FitLog row if rendered
+      var flWi=document.getElementById('fl-wu-'+k);
+      if(flWi)flWi.value=this.value;
+      if(typeof flRefreshGap==='function')flRefreshGap(k);
+      if(typeof flRefreshSlept==='function')flRefreshSlept(k);
+      // Notify DayFlow Kickstart (works for any date, fires only when wake set)
+      notifyDayflowKickstart(k);
     };})(key);
     td1.appendChild(wi);tr.appendChild(td1);
     var td2=document.createElement('td'),wsi=document.createElement('input');
     wsi.type='time';wsi.value=row.workStart||'';wsi.id='ws-'+key;
-    (function(k){wsi.onchange=function(){if(!D[k])D[k]={};D[k].workStart=this.value;sv();refreshGap(k);};})(key);
+    (function(k){wsi.onchange=function(){
+      if(!D[k])D[k]={};D[k].workStart=this.value;sv();refreshGap(k);
+      // Sync to FitLog row if rendered
+      var flWs=document.getElementById('fl-ws-'+k);
+      if(flWs)flWs.value=this.value;
+      if(typeof flRefreshGap==='function')flRefreshGap(k);
+      // Notify DayFlow Kickstart (Fix Part 5 — was missing before)
+      notifyDayflowKickstart(k);
+    };})(key);
     td2.appendChild(wsi);tr.appendChild(td2);
     var td3=document.createElement('td');td3.id='gap-'+key;
     td3.className='gap'+(isLong(row.wake,row.workStart)?' long':'');
@@ -1284,6 +1334,8 @@ window.AbhiSync = (function(){
     // Shift Tracker
     'ad_shifts':               { file: 'shifts.json',               sheet: null },
     'ad_shift_venues':         { file: 'shift_venues.json',         sheet: null },
+    // Dairy
+    'ad_dairy':                { file: 'dairy.json',                sheet: null },
   };
 
   // Also capture any adlbl_* keys dynamically
@@ -1604,7 +1656,110 @@ var syncToSheets = AbhiSync.syncToSheets;
 (function(){
 var st=document.createElement('style');
 st.textContent=`
-#panel-vanity.active,#panel-fitlog.active,#panel-settings.active{display:flex;flex-direction:column;overflow:hidden;}
+#panel-vanity.active,#panel-fitlog.active,#panel-settings.active,#panel-dairy.active{display:flex;flex-direction:column;overflow:hidden;}
+
+/* ════════════════════════════════════════════════════════
+   DAIRY PANEL — daily briefing/debriefing
+   ════════════════════════════════════════════════════════ */
+#panel-dairy{background:var(--bg);color:var(--text);}
+.dy-tb{display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.dy-tb h2{font-size:14px;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700;letter-spacing:.5px;}
+.dy-tb .sp{flex:1;}
+.dy-views{display:inline-flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;}
+.dy-vbtn{padding:5px 10px;border:none;background:transparent;color:var(--muted);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;font-weight:600;letter-spacing:.4px;border-right:1px solid var(--border);transition:background .15s,color .15s;}
+.dy-vbtn:last-child{border-right:none;}
+.dy-vbtn:hover{color:var(--text);}
+.dy-vbtn.active{background:var(--accent);color:#fff;}
+.dy-nav{display:inline-flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;}
+.dy-nbtn{padding:5px 10px;border:none;background:transparent;color:var(--text);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;font-weight:600;border-right:1px solid var(--border);transition:background .15s;white-space:nowrap;}
+.dy-nbtn:last-child{border-right:none;}
+.dy-nbtn:hover{background:rgba(108,138,255,.1);color:var(--accent);}
+.dy-nbtn.today{color:var(--green);}
+.dy-action{padding:5px 11px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;font-weight:600;transition:border-color .15s,color .15s;}
+.dy-action:hover{border-color:var(--accent);color:var(--accent);}
+.dy-action.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.dy-action.primary:hover{filter:brightness(1.1);color:#fff;}
+
+.dy-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 22px 60px;}
+.dy-scroll::-webkit-scrollbar{width:6px;}
+.dy-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.dy-scroll::-webkit-scrollbar-thumb:hover{background:var(--accent);}
+
+/* DAILY VIEW */
+.dy-day{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
+.dy-header{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.dy-date{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text);letter-spacing:1.5px;line-height:1;}
+.dy-date.today{color:var(--green);}
+.dy-dow{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;}
+.dy-times{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);align-items:center;}
+.dy-times strong{color:var(--text);font-weight:700;}
+.dy-time-pill{padding:3px 9px;background:rgba(108,138,255,.1);border:1px solid rgba(108,138,255,.3);border-radius:4px;color:var(--accent);}
+.dy-time-pill.gold{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--gold);}
+
+.dy-shift-banner{background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(245,158,11,.06));border:1.5px solid rgba(245,158,11,.4);border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:6px;}
+.dy-shift-title{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--gold);letter-spacing:2px;}
+.dy-shift-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+.dy-shift-venue{font-size:20px;font-weight:800;color:var(--text);letter-spacing:.5px;}
+.dy-shift-time{font-size:14px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold);}
+.dy-shift-extra{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+.dy-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:8px;}
+.dy-section h3{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--accent);letter-spacing:1.8px;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.dy-section h3 .ico{font-size:14px;}
+.dy-section.yesterday h3{color:var(--accent2);}
+.dy-section.today-brief h3{color:var(--accent);}
+.dy-section.debrief h3{color:var(--green);}
+.dy-textarea{width:100%;min-height:140px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans','Syne',sans-serif;font-size:13px;line-height:1.7;resize:vertical;outline:none;transition:border-color .15s;}
+.dy-textarea:focus{border-color:var(--accent);}
+.dy-section.yesterday .dy-textarea:focus{border-color:var(--accent2);}
+.dy-section.debrief .dy-textarea:focus{border-color:var(--green);}
+.dy-subsection{padding:10px 12px;background:rgba(108,138,255,.05);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;display:flex;flex-direction:column;gap:6px;}
+.dy-subsection-title{font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;}
+.dy-subsection-empty{font-size:11px;color:var(--muted);font-style:italic;}
+.dy-subsection-text{font-size:12px;line-height:1.65;color:var(--text);white-space:pre-wrap;font-family:'DM Sans','Syne',sans-serif;}
+.dy-debrief-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;}
+.dy-meta{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:0 4px;}
+
+/* MONTHLY VIEW */
+.dy-month-wrap{max-width:1100px;margin:0 auto;}
+.dy-month-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px;}
+.dy-mc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:5px;cursor:pointer;transition:border-color .15s,transform .15s;min-height:120px;}
+.dy-mc:hover{border-color:var(--accent);transform:translateY(-2px);}
+.dy-mc.today{border-color:var(--green);box-shadow:0 0 0 1px rgba(52,211,153,.3);}
+.dy-mc.has-shift{border-left:3px solid var(--gold);}
+.dy-mc-d{display:flex;align-items:baseline;gap:5px;}
+.dy-mc-num{font-size:22px;font-weight:800;color:var(--text);font-family:'JetBrains Mono',monospace;line-height:1;}
+.dy-mc.today .dy-mc-num{color:var(--green);}
+.dy-mc-dow{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;}
+.dy-mc-times{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--accent);}
+.dy-mc-shift{font-size:9px;font-weight:700;color:var(--gold);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dy-mc-prev{font-size:10px;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;flex:1;}
+.dy-mc.empty .dy-mc-prev{font-style:italic;opacity:.5;}
+.dy-mc-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px;vertical-align:middle;}
+.dy-mc-mark{display:flex;gap:4px;font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+/* YEARLY VIEW */
+.dy-year-wrap{max-width:1100px;margin:0 auto;}
+.dy-year-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:12px;}
+.dy-yc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:border-color .15s,transform .15s;min-height:130px;}
+.dy-yc:hover{border-color:var(--accent2);transform:translateY(-3px);}
+.dy-yc.current{border-color:var(--green);}
+.dy-yc-name{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text);letter-spacing:1px;text-transform:uppercase;}
+.dy-yc.current .dy-yc-name{color:var(--green);}
+.dy-yc-count{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent);}
+.dy-yc-prev{font-size:10px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;flex:1;}
+
+/* GIANT TEXT VIEW */
+.dy-giant-wrap{max-width:920px;margin:0 auto;}
+.dy-giant-bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.dy-giant-doc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px 28px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.85;white-space:pre-wrap;word-wrap:break-word;color:var(--text);max-height:none;}
+.dy-giant-empty{padding:40px 20px;text-align:center;color:var(--muted);font-style:italic;}
+
+/* LIGHT THEME OVERRIDES */
+[data-theme="light"] .dy-textarea{background:#fff;}
+[data-theme="light"] .dy-time-pill{background:rgba(58,95,217,.08);}
+[data-theme="light"] .dy-shift-banner{background:linear-gradient(135deg,rgba(217,119,6,.1),rgba(217,119,6,.04));}
+[data-theme="light"] .dy-subsection{background:rgba(58,95,217,.04);}
 .vn-toolbar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
 .vn-toolbar h2{font-size:12px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;}
 .vn-inner{display:flex;flex:1;overflow:hidden;}
@@ -1743,10 +1898,10 @@ function flBuildTable(){
     var sdLbl=document.createElement('div');sdLbl.style.fontSize='8px';sdLbl.style.color='var(--muted)';sdLbl.style.fontFamily='monospace';sdLbl.textContent='same day';tdSD2.appendChild(sdLbl);
     tr.appendChild(tdSD2);
     var td1=document.createElement('td'),wi=document.createElement('input');wi.type='time';wi.value=row.wake||'';wi.id='fl-wu-'+key;
-    (function(k){wi.onchange=function(){if(!D[k])D[k]={};D[k].wake=this.value;sv();var m=document.getElementById('wu-'+k);if(m)m.value=this.value;flRefreshGap(k);flRefreshSlept(k);refreshGap(k);refreshSlept(k);var t2=new Date();var tk2=dk(t2);if(k===tk2&&this.value){var p=this.value.split(':');var dfFr=document.getElementById('fr-dayflow');if(dfFr&&dfFr.contentWindow){try{dfFr.contentWindow.postMessage({type:'dayflow_kickstart',wakeHH:parseInt(p[0]),wakeMM:parseInt(p[1])},'*');}catch(ex){}}}};})(key);
+    (function(k){wi.onchange=function(){if(!D[k])D[k]={};D[k].wake=this.value;sv();var m=document.getElementById('wu-'+k);if(m)m.value=this.value;flRefreshGap(k);flRefreshSlept(k);refreshGap(k);refreshSlept(k);notifyDayflowKickstart(k);};})(key);
     td1.appendChild(wi);tr.appendChild(td1);
     var td2=document.createElement('td'),wsi=document.createElement('input');wsi.type='time';wsi.value=row.workStart||'';wsi.id='fl-ws-'+key;
-    (function(k){wsi.onchange=function(){if(!D[k])D[k]={};D[k].workStart=this.value;sv();var m=document.getElementById('ws-'+k);if(m)m.value=this.value;flRefreshGap(k);refreshGap(k);};})(key);
+    (function(k){wsi.onchange=function(){if(!D[k])D[k]={};D[k].workStart=this.value;sv();var m=document.getElementById('ws-'+k);if(m)m.value=this.value;flRefreshGap(k);refreshGap(k);notifyDayflowKickstart(k);};})(key);
     td2.appendChild(wsi);tr.appendChild(td2);
     var td3=document.createElement('td');td3.id='fl-gap-'+key;td3.className='gap'+(isLong(row.wake,row.workStart)?' long':'');td3.textContent=gap(row.wake,row.workStart);tr.appendChild(td3);
     // ── DEEP WORK COL: hh:mm, highlighted red (important) ──
@@ -1826,7 +1981,7 @@ window._fitlogRender=function(){buildFitLog();flUpdateStats();setTimeout(functio
 // SETTINGS PANEL (Request 1)
 // ════════════════════════════════════════════════════════
 (function(){
-var PM={tracker:{icon:'📊',def:'2026 Daily Log'},pledge:{icon:'🔥',def:'Pledge'},sheet:{icon:'📋',def:'Checklist Sheet'},dayflow:{icon:'📅',def:'DayFlow'},abhiplanner:{icon:'🗓️',def:'Abhi Planner'},codetrack:{icon:'💻',def:'Code Tracker'},breathe:{icon:'🫁',def:'Breathe'},znf:{icon:'✈',def:'Zero Noise Flight'},vanity:{icon:'💪',def:'Vanity'},fitlog:{icon:'🏃',def:'Fit Log'},calendar:{icon:'📅',def:'Calendar'},shifts:{icon:'💼',def:'Shift Tracker'},settings:{icon:'⚙️',def:'Settings'}};
+var PM={tracker:{icon:'📊',def:'2026 Daily Log'},pledge:{icon:'🔥',def:'Pledge'},sheet:{icon:'📋',def:'Checklist Sheet'},dayflow:{icon:'📅',def:'DayFlow'},abhiplanner:{icon:'🗓️',def:'Abhi Planner'},codetrack:{icon:'💻',def:'Code Tracker'},breathe:{icon:'🫁',def:'Breathe'},znf:{icon:'✈',def:'Zero Noise Flight'},vanity:{icon:'💪',def:'Vanity'},fitlog:{icon:'🏃',def:'Fit Log'},calendar:{icon:'📅',def:'Calendar'},shifts:{icon:'💼',def:'Shift Tracker'},settings:{icon:'⚙️',def:'Settings'},help:{icon:'❓',def:'Help'},dairy:{icon:'📓',def:'Dairy'}};
 function stGetOrder(){
   var def=Object.keys(PM); // authoritative panel list, in PM declaration order
   var stored=null;
@@ -1873,7 +2028,7 @@ window.stApplyAndSaveOrder=function(){
 };
 window.stRename=function(tid){var sp=document.getElementById('lbl-'+tid);var st2=document.getElementById('st-lbl-'+tid);if(!sp)return;var orig=sp.textContent;var nv=prompt('Rename "'+orig+'" to:',orig);if(!nv||!nv.trim())return;nv=nv.trim();sp.textContent=nv;if(st2)st2.textContent=nv;localStorage.setItem('adlbl_'+tid,nv);};
 window.stToggleVis=function(tid,visible){var hl=JSON.parse(localStorage.getItem('ad_hidden')||'[]');if(visible){hl=hl.filter(function(x){return x!==tid;});}else{if(!hl.includes(tid))hl.push(tid);}localStorage.setItem('ad_hidden',JSON.stringify(hl));_hidden=hl;if(visible){var te=document.getElementById('tab-'+tid);if(te)te.style.cssText='';var pid=PANEL[tid]||('panel-'+tid);var pe=document.getElementById(pid);if(pe)pe.style.cssText='';}else{_applyHidden();}};
-var SHORT_ICONS={tracker:'\ud83d\udcca',pledge:'\ud83d\udd25',sheet:'\ud83d\udccb',dayflow:'\ud83d\udcc5',abhiplanner:'\ud83d\uddd3\ufe0f',codetrack:'\ud83d\udcbb',breathe:'\ud83e\udd2b',znf:'\u2708',vanity:'\ud83d\udcaa',fitlog:'\ud83c\udfc3',calendar:'\ud83d\udcc5',shifts:'\ud83d\udcbc',settings:'\u2699\ufe0f'};
+var SHORT_ICONS={tracker:'\ud83d\udcca',pledge:'\ud83d\udd25',sheet:'\ud83d\udccb',dayflow:'\ud83d\udcc5',abhiplanner:'\ud83d\uddd3\ufe0f',codetrack:'\ud83d\udcbb',breathe:'\ud83e\udd2b',znf:'\u2708',vanity:'\ud83d\udcaa',fitlog:'\ud83c\udfc3',calendar:'\ud83d\udcc5',shifts:'\ud83d\udcbc',settings:'\u2699\ufe0f',help:'\u2753',dairy:'\ud83d\udcd3'};
 function stRenderShortNames(){var tbody=document.getElementById('st-shortnames-body');if(!tbody)return;var rows='';var order=stGetOrder();order.forEach(function(tid){var icon=SHORT_ICONS[tid]||'\ud83d\udcc4';var displayName=localStorage.getItem('adlbl_'+tid)||(PM[tid]?PM[tid].def:tid);rows+='<tr style="border-bottom:1px solid rgba(128,128,128,.1);"><td style="padding:5px 8px;"><code style="background:rgba(108,138,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:11px;">'+tid+'</code></td><td style="padding:5px 8px;color:var(--text);">'+icon+' '+displayName+'</td><td style="padding:5px 8px;color:var(--muted);font-size:10px;">panel-'+tid+'</td></tr>';});tbody.innerHTML=rows;}
 function stWireDrag(){
   var list=document.getElementById('st-panel-list');if(!list)return;
@@ -2482,6 +2637,623 @@ window.helpSearch=function(q){
 window._helpRender=function(){
   if(!_helpBuilt) buildHelp();
 };
+})();
+
+// ════════════════════════════════════════════════════════
+// DAIRY PANEL — daily briefing/debriefing system
+// ════════════════════════════════════════════════════════
+(function(){
+'use strict';
+
+var DY_KEY='ad_dairy';
+var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var MN_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var DOW_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// ── State ──
+var dyData={entries:{},view:'daily',cursor:null,monthCursor:null,yearCursor:null};
+var dyBuilt=false;
+var dySaveTimer=null;
+
+// ── Date helpers ──
+function dyPad(n){return String(n).padStart(2,'0');}
+function dyTodayKey(){var d=new Date();return d.getFullYear()+'-'+dyPad(d.getMonth()+1)+'-'+dyPad(d.getDate());}
+function dyParse(k){if(!k||typeof k!=='string')return new Date();var p=k.split('-').map(Number);return new Date(p[0]||2026,(p[1]||1)-1,p[2]||1);}
+function dyKey(d){return d.getFullYear()+'-'+dyPad(d.getMonth()+1)+'-'+dyPad(d.getDate());}
+function dyAddDays(k,n){var d=dyParse(k);d.setDate(d.getDate()+n);return dyKey(d);}
+function dyMonthKey(d){return d.getFullYear()+'-'+dyPad(d.getMonth()+1);}
+function dyParseMonth(mk){var p=(mk||'').split('-').map(Number);return new Date(p[0]||2026,(p[1]||1)-1,1);}
+function dyFmtDate(k){var d=dyParse(k);return dyPad(d.getDate())+' / '+dyPad(d.getMonth()+1)+' / '+d.getFullYear();}
+function dyFmtDOW(k){return DOW_FULL[dyParse(k).getDay()];}
+
+// ── Storage ──
+function dyLoad(){
+  try{
+    var raw=localStorage.getItem(DY_KEY);
+    if(raw){
+      var parsed=JSON.parse(raw);
+      if(parsed&&typeof parsed==='object'){
+        dyData.entries=parsed.entries||{};
+        dyData.view=parsed.view||'daily';
+        dyData.cursor=parsed.cursor||dyTodayKey();
+        dyData.monthCursor=parsed.monthCursor||dyMonthKey(new Date());
+        dyData.yearCursor=parsed.yearCursor||(new Date()).getFullYear();
+      }
+    }
+  }catch(e){console.warn('[Dairy] load failed:',e);}
+  if(!dyData.cursor)dyData.cursor=dyTodayKey();
+  if(!dyData.monthCursor)dyData.monthCursor=dyMonthKey(new Date());
+  if(!dyData.yearCursor)dyData.yearCursor=(new Date()).getFullYear();
+}
+function dySave(){
+  try{localStorage.setItem(DY_KEY,JSON.stringify(dyData));}catch(e){console.warn('[Dairy] save failed:',e);}
+}
+function dyQueueSave(){clearTimeout(dySaveTimer);dySaveTimer=setTimeout(dySave,400);}
+
+// ── Entry helpers ──
+function dyGetEntry(k,createIfMissing){
+  if(!dyData.entries[k]){
+    if(!createIfMissing)return{dateKey:k,instructionsFromYesterday:'',todaysBriefing:'',dayflowPlanNote:'',endOfDayDebriefing:''};
+    var now=new Date().toISOString();
+    dyData.entries[k]={dateKey:k,instructionsFromYesterday:'',todaysBriefing:'',dayflowPlanNote:'',endOfDayDebriefing:'',createdAt:now,updatedAt:now};
+  }
+  return dyData.entries[k];
+}
+function dyPatchEntry(k,patch){
+  var e=dyGetEntry(k,true);
+  Object.keys(patch||{}).forEach(function(f){e[f]=patch[f];});
+  e.updatedAt=new Date().toISOString();
+  dyQueueSave();
+}
+function dyHasContent(e){
+  if(!e)return false;
+  return!!(e.instructionsFromYesterday||e.todaysBriefing||e.dayflowPlanNote||e.endOfDayDebriefing);
+}
+
+// ── Cross-panel data readers (read-only, no copies) ──
+function dyReadFitlog(k){
+  // Wake / workStart for the date — pulls from the same `D` (ad2026) live store
+  // used by Daily Log and FitLog, so values flow in automatically.
+  try{
+    var src=(typeof D==='object'&&D)?D:JSON.parse(localStorage.getItem('ad2026')||'{}');
+    var row=src[k]||{};
+    return{wake:row.wake||'',workStart:row.workStart||''};
+  }catch(_){return{wake:'',workStart:''};}
+}
+function dyReadShifts(k){
+  try{
+    var sh=JSON.parse(localStorage.getItem('ad_shifts')||'[]');
+    return sh.filter(function(s){return s&&s.date===k;});
+  }catch(_){return[];}
+}
+function dyReadDayflowNote(){
+  // Single multi-day note from DayFlow's notepad — we surface it for "today"
+  // and also keep a dated snapshot inside the Dairy entry so historical days
+  // preserve whatever the plan looked like at the time the user viewed Dairy.
+  try{return localStorage.getItem('dayflow_note')||'';}catch(_){return'';}
+}
+
+// Public bridge — index.html's notifyDayflowKickstart() calls this so the Dairy
+// panel re-renders the wake/work-start strip in real time without a tab switch.
+window.dairyOnFitlogChange=function(dateKey){
+  if(!dyBuilt)return;
+  if(dyData.view!=='daily')return;
+  if(dateKey&&dateKey!==dyData.cursor)return;
+  // Just refresh the header strip
+  var hdr=document.getElementById('dy-times-host');
+  if(!hdr)return;
+  var f=dyReadFitlog(dyData.cursor);
+  hdr.innerHTML=dyTimesHTML(f.wake,f.workStart);
+};
+
+// ── Sync DayFlow plan note into today's entry on render (Part 6) ──
+function dySyncDayflowNoteIfRelevant(dateKey){
+  // Only the currently-visible-in-DayFlow plan can be considered fresh. We snap
+  // it onto today's entry so historical entries don't get overwritten when the
+  // user visits Dairy on a different day. This preserves manually-typed text
+  // because we keep manual briefing in `todaysBriefing` and the plan note in
+  // a separate field `dayflowPlanNote` rendered as a labelled subsection.
+  if(dateKey!==dyTodayKey())return;
+  var note=dyReadDayflowNote();
+  var e=dyGetEntry(dateKey,false);
+  if((e.dayflowPlanNote||'')===note)return;
+  dyPatchEntry(dateKey,{dayflowPlanNote:note});
+}
+
+// ── Build skeleton ──
+function dyBuild(){
+  var panel=document.getElementById('panel-dairy');
+  if(!panel)return;
+  panel.innerHTML=
+    '<div class="dy-tb">'+
+      '<h2>📓 // Dairy</h2>'+
+      '<span class="thint" style="font-size:9px;color:var(--muted);font-family:\'JetBrains Mono\',monospace;">daily briefing &middot; debriefing &middot; auto-saves</span>'+
+      '<span class="sp"></span>'+
+      '<div class="dy-views" id="dy-views"></div>'+
+      '<div class="dy-nav" id="dy-nav"></div>'+
+    '</div>'+
+    '<div class="dy-scroll" id="dy-scroll"></div>';
+  dyBuilt=true;
+}
+
+// ── View bar ──
+function dyRenderViewBar(){
+  var bar=document.getElementById('dy-views');
+  if(!bar)return;
+  var v=dyData.view;
+  bar.innerHTML=
+    '<button class="dy-vbtn'+(v==='daily'?' active':'')+'" onclick="dairySetView(\'daily\')">📅 Daily</button>'+
+    '<button class="dy-vbtn'+(v==='monthly'?' active':'')+'" onclick="dairySetView(\'monthly\')">🗓 Monthly</button>'+
+    '<button class="dy-vbtn'+(v==='yearly'?' active':'')+'" onclick="dairySetView(\'yearly\')">📆 Yearly</button>'+
+    '<button class="dy-vbtn'+(v==='giant'?' active':'')+'" onclick="dairySetView(\'giant\')">📜 Giant Text</button>';
+}
+
+// ── Nav bar (depends on view) ──
+function dyRenderNavBar(){
+  var bar=document.getElementById('dy-nav');
+  if(!bar)return;
+  var html='';
+  if(dyData.view==='daily'){
+    html=
+      '<button class="dy-nbtn" onclick="dairyNavDay(-1)">◀ Prev Day</button>'+
+      '<button class="dy-nbtn today" onclick="dairyNavDay(0)">📍 Today</button>'+
+      '<button class="dy-nbtn" onclick="dairyNavDay(1)">Next Day ▶</button>';
+  } else if(dyData.view==='monthly'||dyData.view==='giant'){
+    html=
+      '<button class="dy-nbtn" onclick="dairyNavMonth(-1)">◀ Prev Month</button>'+
+      '<button class="dy-nbtn today" onclick="dairyNavMonth(0)">📍 This Month</button>'+
+      '<button class="dy-nbtn" onclick="dairyNavMonth(1)">Next Month ▶</button>';
+  } else { // yearly
+    html=
+      '<button class="dy-nbtn" onclick="dairyNavYear(-1)">◀ Prev Year</button>'+
+      '<button class="dy-nbtn today" onclick="dairyNavYear(0)">📍 This Year</button>'+
+      '<button class="dy-nbtn" onclick="dairyNavYear(1)">Next Year ▶</button>';
+  }
+  bar.innerHTML=html;
+}
+
+// ── Times HTML helper (shared) ──
+function dyTimesHTML(wake,workStart){
+  var w=wake?'<span class="dy-time-pill">Wake: <strong>'+escHTML(wake)+'</strong></span>':'<span class="dy-time-pill" style="opacity:.55">Wake: —</span>';
+  var s=workStart?'<span class="dy-time-pill gold">Productivity Started: <strong>'+escHTML(workStart)+'</strong></span>':'<span class="dy-time-pill gold" style="opacity:.55">Productivity Started: —</span>';
+  return w+s;
+}
+function escHTML(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
+
+// ── DAILY VIEW ──
+function dyRenderDaily(){
+  var host=document.getElementById('dy-scroll');if(!host)return;
+  var k=dyData.cursor||dyTodayKey();
+  dySyncDayflowNoteIfRelevant(k);
+  var e=dyGetEntry(k,false);
+  var f=dyReadFitlog(k);
+  var shifts=dyReadShifts(k);
+  var todayK=dyTodayKey();
+  var dateClass=(k===todayK)?'today':'';
+
+  var shiftHTML='';
+  if(shifts.length){
+    var rows=shifts.map(function(s){
+      var sd=new Date(s.startIso);var ed=new Date(s.endIso);
+      var t=dyPad(sd.getHours())+':'+dyPad(sd.getMinutes())+' - '+dyPad(ed.getHours())+':'+dyPad(ed.getMinutes());
+      var extra=[];
+      if(s.job)extra.push(escHTML(s.job));
+      if(s.hours)extra.push((+s.hours).toFixed(2)+'h');
+      if(s.pay)extra.push('£'+(+s.pay).toFixed(2));
+      return '<div class="dy-shift-row">'+
+        '<span class="dy-shift-venue">'+escHTML(s.venue||'(no venue)')+'</span>'+
+        '<span class="dy-shift-time">'+t+'</span>'+
+        (extra.length?'<span class="dy-shift-extra">'+extra.join(' · ')+'</span>':'')+
+        '</div>';
+    }).join('');
+    shiftHTML='<div class="dy-shift-banner">'+
+      '<div class="dy-shift-title">📌 TODAY SHIFT'+(shifts.length>1?'S ('+shifts.length+')':'')+'</div>'+
+      rows+
+      '</div>';
+  }
+
+  var noteSubsec=(e.dayflowPlanNote&&e.dayflowPlanNote.trim())
+    ?'<div class="dy-subsection">'+
+       '<div class="dy-subsection-title">📋 DayFlow Plan Note <span style="font-weight:400;font-size:9px;opacity:.65;text-transform:none;letter-spacing:.5px;">auto-imported · don\'t edit here</span></div>'+
+       '<div class="dy-subsection-text">'+escHTML(e.dayflowPlanNote)+'</div>'+
+     '</div>'
+    :'<div class="dy-subsection">'+
+       '<div class="dy-subsection-title">📋 DayFlow Plan Note</div>'+
+       '<div class="dy-subsection-empty">No plan note yet — place blocks in DayFlow and it will appear here.</div>'+
+     '</div>';
+
+  var meta=(e.createdAt||e.updatedAt)
+    ?'<div class="dy-meta">'+
+       (e.createdAt?'<span>Created: '+dyFmtMetaTs(e.createdAt)+'</span>':'')+
+       (e.updatedAt?'<span>Last edit: '+dyFmtMetaTs(e.updatedAt)+'</span>':'')+
+     '</div>':'';
+
+  host.innerHTML=
+    '<div class="dy-day">'+
+      '<div class="dy-header">'+
+        '<div style="display:flex;flex-direction:column;gap:3px;">'+
+          '<div class="dy-date '+dateClass+'">'+dyFmtDate(k)+'</div>'+
+          '<div class="dy-dow">'+dyFmtDOW(k)+(k===todayK?' · TODAY':'')+'</div>'+
+        '</div>'+
+        '<div class="dy-times" id="dy-times-host">'+dyTimesHTML(f.wake,f.workStart)+'</div>'+
+      '</div>'+
+      shiftHTML+
+      '<div class="dy-section yesterday">'+
+        '<h3><span class="ico">📨</span> Instructions From Yesterday</h3>'+
+        '<textarea class="dy-textarea" id="dy-iy" placeholder="Notes carried forward from yesterday — what you decided to do today, things you promised yourself, etc.">'+escHTML(e.instructionsFromYesterday||'')+'</textarea>'+
+      '</div>'+
+      '<div class="dy-section today-brief">'+
+        '<h3><span class="ico">🌅</span> Today\'s Briefing</h3>'+
+        '<textarea class="dy-textarea" id="dy-tb" placeholder="Plan for today — priorities, focus, intentions...">'+escHTML(e.todaysBriefing||'')+'</textarea>'+
+        noteSubsec+
+      '</div>'+
+      '<div class="dy-section debrief">'+
+        '<h3><span class="ico">🌙</span> End-of-Day Debriefing</h3>'+
+        '<textarea class="dy-textarea" id="dy-eod" placeholder="Reflect on today — what worked, what didn\'t, instructions for tomorrow...">'+escHTML(e.endOfDayDebriefing||'')+'</textarea>'+
+        '<div class="dy-debrief-actions">'+
+          '<button class="dy-action primary" onclick="dairyPushTomorrow()">📤 Push to Tomorrow ▶</button>'+
+        '</div>'+
+      '</div>'+
+      meta+
+    '</div>';
+
+  // Wire textarea autosave
+  ['dy-iy','dy-tb','dy-eod'].forEach(function(id){
+    var ta=document.getElementById(id);
+    if(!ta)return;
+    ta.addEventListener('input',function(){
+      var patch={};
+      if(id==='dy-iy')patch.instructionsFromYesterday=ta.value;
+      if(id==='dy-tb')patch.todaysBriefing=ta.value;
+      if(id==='dy-eod')patch.endOfDayDebriefing=ta.value;
+      dyPatchEntry(k,patch);
+    });
+  });
+}
+
+function dyFmtMetaTs(iso){
+  try{var d=new Date(iso);if(isNaN(d.getTime()))return iso;return dyPad(d.getDate())+'/'+dyPad(d.getMonth()+1)+'/'+d.getFullYear()+' '+dyPad(d.getHours())+':'+dyPad(d.getMinutes());}catch(_){return iso;}
+}
+
+// ── Push to Tomorrow ──
+window.dairyPushTomorrow=function(){
+  var k=dyData.cursor||dyTodayKey();
+  var src=dyGetEntry(k,false);
+  var srcText=(src.endOfDayDebriefing||'').trim();
+  if(!srcText){
+    alert('Nothing to push — End-of-Day Debriefing is empty for '+dyFmtDate(k)+'.');
+    return;
+  }
+  var tk=dyAddDays(k,1);
+  var dst=dyGetEntry(tk,false);
+  var existing=(dst.instructionsFromYesterday||'').trim();
+  var finalText=srcText;
+  if(existing){
+    var choice=window.prompt(
+      'Tomorrow ('+dyFmtDate(tk)+') already has Instructions From Yesterday.\n\n'+
+      'Type one of:\n'+
+      '  R  =  Replace existing\n'+
+      '  A  =  Append below existing\n'+
+      '  C  =  Cancel\n',
+      'A'
+    );
+    if(!choice)return;
+    var c=choice.trim().toUpperCase().charAt(0);
+    if(c==='C')return;
+    if(c==='A'){finalText=existing+'\n\n— — —\n\n'+srcText;}
+    else if(c==='R'){finalText=srcText;}
+    else{alert('Cancelled — unrecognised option.');return;}
+  }
+  dyPatchEntry(tk,{instructionsFromYesterday:finalText});
+  dySave(); // flush immediately
+  // Visual confirmation
+  var toast=document.createElement('div');
+  toast.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:9px 18px;border-radius:8px;font-size:12px;font-family:\'JetBrains Mono\',monospace;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:9999;';
+  toast.textContent='✓ Pushed to '+dyFmtDate(tk);
+  document.body.appendChild(toast);
+  setTimeout(function(){toast.remove();},2200);
+};
+
+// ── MONTHLY VIEW ──
+function dyRenderMonthly(){
+  var host=document.getElementById('dy-scroll');if(!host)return;
+  var mc=dyData.monthCursor||dyMonthKey(new Date());
+  var mDate=dyParseMonth(mc);
+  var year=mDate.getFullYear(),month=mDate.getMonth();
+  var first=new Date(year,month,1);
+  var last=new Date(year,month+1,0);
+  var todayK=dyTodayKey();
+  var html='<div class="dy-month-wrap">';
+  html+='<h2 style="font-size:18px;font-family:\'JetBrains Mono\',monospace;color:var(--accent);font-weight:800;letter-spacing:1px;text-align:center;">'+MN[month]+' '+year+'</h2>';
+  html+='<div style="text-align:center;font-size:10px;color:var(--muted);font-family:\'JetBrains Mono\',monospace;margin-top:4px;">Click any date to open in Daily View</div>';
+  html+='<div class="dy-month-grid">';
+  for(var dn=first.getDate();dn<=last.getDate();dn++){
+    var dt=new Date(year,month,dn);
+    var k=dyKey(dt);
+    var e=dyGetEntry(k,false);
+    var f=dyReadFitlog(k);
+    var shifts=dyReadShifts(k);
+    var classes='dy-mc';
+    if(k===todayK)classes+=' today';
+    if(shifts.length)classes+=' has-shift';
+    if(!dyHasContent(e)&&!shifts.length&&!f.wake)classes+=' empty';
+    // Preview text: prefer todaysBriefing, fall back to others
+    var pv=(e.todaysBriefing||e.endOfDayDebriefing||e.instructionsFromYesterday||'').trim();
+    pv=pv?escHTML(pv).slice(0,140):'No entry yet — click to start.';
+    var times='';
+    if(f.wake||f.workStart){
+      times='<div class="dy-mc-times">';
+      if(f.wake)times+='⏰ '+escHTML(f.wake);
+      if(f.workStart)times+=(f.wake?' · ':'')+'🚀 '+escHTML(f.workStart);
+      times+='</div>';
+    }
+    var shiftLine='';
+    if(shifts.length){
+      var first2=shifts[0];
+      var sd=new Date(first2.startIso),ed=new Date(first2.endIso);
+      var t=dyPad(sd.getHours())+':'+dyPad(sd.getMinutes())+'-'+dyPad(ed.getHours())+':'+dyPad(ed.getMinutes());
+      shiftLine='<div class="dy-mc-shift">💼 '+escHTML(first2.venue||'Shift')+' '+t+(shifts.length>1?' +'+(shifts.length-1):'')+'</div>';
+    }
+    var marks='';
+    if(dyHasContent(e))marks+='<span title="Has Dairy entry"><span class="dy-mc-dot"></span>Logged</span>';
+    html+='<div class="'+classes+'" onclick="dairyOpenDate(\''+k+'\')">'+
+      '<div class="dy-mc-d"><span class="dy-mc-num">'+dn+'</span><span class="dy-mc-dow">'+DOW[dt.getDay()]+'</span></div>'+
+      times+
+      shiftLine+
+      '<div class="dy-mc-prev">'+pv+'</div>'+
+      (marks?'<div class="dy-mc-mark">'+marks+'</div>':'')+
+      '</div>';
+  }
+  html+='</div></div>';
+  host.innerHTML=html;
+}
+
+// ── YEARLY VIEW ──
+function dyRenderYearly(){
+  var host=document.getElementById('dy-scroll');if(!host)return;
+  var year=dyData.yearCursor||(new Date()).getFullYear();
+  var todayY=(new Date()).getFullYear();
+  var todayM=(new Date()).getMonth();
+  var html='<div class="dy-year-wrap">';
+  html+='<h2 style="font-size:22px;font-family:\'JetBrains Mono\',monospace;color:var(--accent2);font-weight:800;letter-spacing:1.5px;text-align:center;">'+year+'</h2>';
+  html+='<div style="text-align:center;font-size:10px;color:var(--muted);font-family:\'JetBrains Mono\',monospace;margin-top:4px;">Click any month to open Monthly View</div>';
+  html+='<div class="dy-year-grid">';
+  for(var m=0;m<12;m++){
+    var mPrefix=year+'-'+dyPad(m+1)+'-';
+    var keys=Object.keys(dyData.entries).filter(function(k){return k.indexOf(mPrefix)===0;});
+    var withContent=keys.filter(function(k){return dyHasContent(dyData.entries[k]);});
+    var current=(year===todayY&&m===todayM);
+    // Pull a small preview from the most recent non-empty entry of that month
+    var pv='';
+    if(withContent.length){
+      withContent.sort();
+      var lastE=dyData.entries[withContent[withContent.length-1]];
+      pv=(lastE.todaysBriefing||lastE.endOfDayDebriefing||lastE.instructionsFromYesterday||'').trim();
+      if(pv)pv=escHTML(pv).slice(0,160);
+    }
+    if(!pv)pv='No entries yet.';
+    html+='<div class="dy-yc'+(current?' current':'')+'" onclick="dairyOpenMonth(\''+(year+'-'+dyPad(m+1))+'\')">'+
+      '<div class="dy-yc-name">'+MN[m]+'</div>'+
+      '<div class="dy-yc-count">'+withContent.length+' entr'+(withContent.length===1?'y':'ies')+'</div>'+
+      '<div class="dy-yc-prev"'+(withContent.length?'':' style="font-style:italic;opacity:.5;"')+'>'+pv+'</div>'+
+      '</div>';
+  }
+  html+='</div></div>';
+  host.innerHTML=html;
+}
+
+// ── GIANT TEXT VIEW ──
+function dyBuildGiantText(monthCursor){
+  var mDate=dyParseMonth(monthCursor);
+  var year=mDate.getFullYear(),month=mDate.getMonth();
+  var first=new Date(year,month,1),last=new Date(year,month+1,0);
+  var lines=[];
+  lines.push('===============================================');
+  lines.push('  '+MN[month].toUpperCase()+' '+year+' — DAIRY LOG');
+  lines.push('===============================================');
+  lines.push('');
+  var rendered=0;
+  for(var dn=first.getDate();dn<=last.getDate();dn++){
+    var dt=new Date(year,month,dn);
+    var k=dyKey(dt);
+    var e=dyGetEntry(k,false);
+    var f=dyReadFitlog(k);
+    var shifts=dyReadShifts(k);
+    var hasAnything=dyHasContent(e)||shifts.length||f.wake||f.workStart;
+    if(!hasAnything)continue;
+    rendered++;
+    lines.push('================================');
+    lines.push(dyFmtDate(k)+'  ·  '+DOW_FULL[dt.getDay()]);
+    lines.push('================================');
+    lines.push('');
+    if(f.wake||f.workStart){
+      lines.push('Wake: '+(f.wake||'—')+'  |  Productivity Started: '+(f.workStart||'—'));
+      lines.push('');
+    }
+    if(shifts.length){
+      shifts.forEach(function(s,i){
+        var sd=new Date(s.startIso),ed=new Date(s.endIso);
+        var t=dyPad(sd.getHours())+':'+dyPad(sd.getMinutes())+' - '+dyPad(ed.getHours())+':'+dyPad(ed.getMinutes());
+        lines.push('TODAY SHIFT'+(shifts.length>1?' #'+(i+1):'')+':');
+        lines.push('Venue: '+(s.venue||'—'));
+        lines.push('Time: '+t);
+        if(s.job||s.hours||s.pay){
+          var extras=[];
+          if(s.job)extras.push('Role: '+s.job);
+          if(s.hours)extras.push((+s.hours).toFixed(2)+'h');
+          if(s.pay)extras.push('£'+(+s.pay).toFixed(2));
+          lines.push(extras.join(' · '));
+        }
+        lines.push('');
+      });
+    }
+    if(e.instructionsFromYesterday){
+      lines.push('Instructions From Yesterday:');
+      lines.push(e.instructionsFromYesterday);
+      lines.push('');
+    }
+    if(e.todaysBriefing||e.dayflowPlanNote){
+      lines.push("Today's Briefing:");
+      if(e.todaysBriefing){lines.push(e.todaysBriefing);}
+      if(e.dayflowPlanNote){
+        if(e.todaysBriefing)lines.push('');
+        lines.push('— DayFlow Plan Note —');
+        lines.push(e.dayflowPlanNote);
+      }
+      lines.push('');
+    }
+    if(e.endOfDayDebriefing){
+      lines.push('End-of-Day Debriefing:');
+      lines.push(e.endOfDayDebriefing);
+      lines.push('');
+    }
+    lines.push('');
+  }
+  return{text:lines.join('\n'),count:rendered};
+}
+
+function dyRenderGiant(){
+  var host=document.getElementById('dy-scroll');if(!host)return;
+  var mc=dyData.monthCursor||dyMonthKey(new Date());
+  var built=dyBuildGiantText(mc);
+  var mDate=dyParseMonth(mc);
+  var html='<div class="dy-giant-wrap">';
+  html+='<div class="dy-giant-bar">'+
+    '<h2 style="font-size:16px;font-family:\'JetBrains Mono\',monospace;color:var(--accent);font-weight:800;letter-spacing:1px;flex:1;">'+MN[mDate.getMonth()]+' '+mDate.getFullYear()+' — '+built.count+' entr'+(built.count===1?'y':'ies')+'</h2>'+
+    '<button class="dy-action" onclick="dairyCopyGiant()">📋 Copy Monthly Log</button>'+
+    '<button class="dy-action" onclick="dairyExportGiant()">⬇ Export .txt</button>'+
+    '</div>';
+  if(built.count===0){
+    html+='<div class="dy-giant-doc"><div class="dy-giant-empty">No Dairy entries, shifts, or wake/productivity data for this month yet.</div></div>';
+  } else {
+    html+='<pre class="dy-giant-doc" id="dy-giant-doc">'+escHTML(built.text)+'</pre>';
+  }
+  html+='</div>';
+  host.innerHTML=html;
+}
+
+window.dairyCopyGiant=function(){
+  var mc=dyData.monthCursor||dyMonthKey(new Date());
+  var built=dyBuildGiantText(mc);
+  if(!built.text||!built.count){alert('Nothing to copy — this month has no entries.');return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(built.text).then(function(){
+      var btns=document.querySelectorAll('.dy-action');btns.forEach(function(b){if(b.textContent.indexOf('Copy')>-1){var o=b.textContent;b.textContent='✓ Copied!';setTimeout(function(){b.textContent=o;},1800);}});
+    },function(){
+      // Fallback
+      _dyFallbackCopy(built.text);
+    });
+  } else {
+    _dyFallbackCopy(built.text);
+  }
+};
+function _dyFallbackCopy(text){
+  var ta=document.createElement('textarea');ta.value=text;
+  ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');alert('Copied!');}catch(_){alert('Copy failed — please select and copy manually.');}
+  ta.remove();
+}
+window.dairyExportGiant=function(){
+  var mc=dyData.monthCursor||dyMonthKey(new Date());
+  var built=dyBuildGiantText(mc);
+  if(!built.text||!built.count){alert('Nothing to export — this month has no entries.');return;}
+  var mDate=dyParseMonth(mc);
+  var fname='Dairy '+MN[mDate.getMonth()]+' '+mDate.getFullYear()+'.txt';
+  var blob=new Blob([built.text],{type:'text/plain;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1500);
+};
+
+// ── Navigation ──
+window.dairyNavDay=function(delta){
+  if(delta===0)dyData.cursor=dyTodayKey();
+  else dyData.cursor=dyAddDays(dyData.cursor||dyTodayKey(),delta);
+  dyQueueSave();dyRenderAll();
+};
+window.dairyNavMonth=function(delta){
+  if(delta===0)dyData.monthCursor=dyMonthKey(new Date());
+  else{
+    var d=dyParseMonth(dyData.monthCursor||dyMonthKey(new Date()));
+    d.setMonth(d.getMonth()+delta);
+    dyData.monthCursor=dyMonthKey(d);
+  }
+  dyQueueSave();dyRenderAll();
+};
+window.dairyNavYear=function(delta){
+  if(delta===0)dyData.yearCursor=(new Date()).getFullYear();
+  else dyData.yearCursor=(dyData.yearCursor||(new Date()).getFullYear())+delta;
+  dyQueueSave();dyRenderAll();
+};
+window.dairySetView=function(v){
+  if(['daily','monthly','yearly','giant'].indexOf(v)===-1)return;
+  dyData.view=v;
+  // When switching to daily, ensure cursor is sane (today if none set)
+  if(v==='daily'&&!dyData.cursor)dyData.cursor=dyTodayKey();
+  dyQueueSave();dyRenderAll();
+};
+window.dairyOpenDate=function(k){
+  dyData.cursor=k;
+  dyData.view='daily';
+  dyQueueSave();dyRenderAll();
+};
+window.dairyOpenMonth=function(mk){
+  dyData.monthCursor=mk;
+  dyData.view='monthly';
+  dyQueueSave();dyRenderAll();
+};
+
+// ── Master render ──
+function dyRenderAll(){
+  if(!dyBuilt)dyBuild();
+  dyRenderViewBar();
+  dyRenderNavBar();
+  if(dyData.view==='daily')dyRenderDaily();
+  else if(dyData.view==='monthly')dyRenderMonthly();
+  else if(dyData.view==='yearly')dyRenderYearly();
+  else if(dyData.view==='giant')dyRenderGiant();
+}
+
+// ── Public entry point (called from switchTab) ──
+window._dairyRender=function(){
+  dyLoad();
+  // If today's cursor was set on a different calendar day, snap to today on
+  // re-open so users don't land on yesterday's page after a refresh.
+  // (User can still manually navigate elsewhere afterwards.)
+  var lastOpenDay=sessionStorage.getItem('_dairyLastOpen');
+  var todayK=dyTodayKey();
+  if(lastOpenDay!==todayK&&dyData.view==='daily'){
+    dyData.cursor=todayK;
+  }
+  sessionStorage.setItem('_dairyLastOpen',todayK);
+  dyRenderAll();
+};
+
+// Listen for shift changes from the parent message bus so the open Dairy view
+// reflects new shifts immediately, no tab-switch needed.
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='shifts_updated')return;
+  if(!dyBuilt)return;
+  if(document.getElementById('panel-dairy')&&document.getElementById('panel-dairy').classList.contains('active')){
+    dyRenderAll();
+  }
+});
+
+// Also re-render when storage changes from another tab
+window.addEventListener('storage',function(e){
+  if(!e.key)return;
+  if(['ad_dairy','ad_shifts','ad2026','dayflow_note'].indexOf(e.key)===-1)return;
+  if(e.key==='ad_dairy'){dyLoad();}
+  if(dyBuilt&&document.getElementById('panel-dairy')&&document.getElementById('panel-dairy').classList.contains('active')){
+    dyRenderAll();
+  }
+});
+
+// Eager-load storage so the bridge can read entries before the panel is opened
+dyLoad();
+
 })();
 </script>
 </body>
