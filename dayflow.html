@@ -743,6 +743,13 @@ function saveState() { // persist state into localStorage
     });
     localStorage.setItem(LS_PLACED, JSON.stringify(placedData));
     syncToShared(); // mirror to shared event store for Calendar panel
+    // Notify Dairy panel (parent window) so its plan strip refreshes live.
+    // We don't know which date(s) the user just edited cheaply, so we tell it
+    // the cursor day will recompute from localStorage on the other side.
+    try{
+      var p=(window.parent&&window.parent!==window)?window.parent:window;
+      if(p&&typeof p.dairyOnDayflowChange==='function'){p.dairyOnDayflowChange(null);}
+    }catch(_){}
   } catch(e) { console.warn('Save failed:', e); }
 }
 
