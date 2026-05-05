@@ -662,6 +662,8 @@ body[data-editmode="drag"] #cp.panning,body[data-editmode="drag"] #cp-viewport.p
   <div class="ci" id="sbctx-pushnext" onclick="sbCtxAct('next')">⏩ Push to next day</div>
   <div class="ci" id="sbctx-pushslot" onclick="sbCtxAct('slot')">🔍 Push to next available slot</div>
   <div class="ci" id="sbctx-pushdate" onclick="sbCtxAct('date')">📅 Move to custom date…</div>
+  <div class="csep"></div>
+  <div class="ci" id="sbctx-split" onclick="sbCtxAct('split')">✂ Split / Distribute Task…</div>
   <div class="csep" id="sbctx-proj-sep" style="display:none"></div>
   <div class="ci" id="sbctx-proj-all" style="display:none" onclick="sbCtxAct('proj-all')">◆ Push ALL project blocks forward</div>
   <div class="ci" id="sbctx-proj-this" style="display:none" onclick="sbCtxAct('proj-this')">▬ Push just this block forward</div>
@@ -704,6 +706,42 @@ body[data-editmode="drag"] #cp.panning,body[data-editmode="drag"] #cp-viewport.p
     <div class="cdateact">
       <button class="btn" onclick="closeQuickAdd()">Cancel</button>
       <button class="btn on" onclick="confirmQuickAdd()">Add ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- overflow dialog removed — blocks always placed, overflow shown via red alert styling -->
+
+<!-- SPLIT / DISTRIBUTE TASK DIALOG -->
+<div id="splitdlg" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:720;">
+  <div class="cdatebox" style="width:340px;">
+    <h3>✂ Split / Distribute Task</h3>
+    <p id="split-desc" style="font-size:10px;color:var(--mu);">—</p>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:6px 8px;border:1px solid var(--bd);border-radius:5px;" id="split-mode-days-row">
+        <input type="radio" name="splitmode" value="days" id="split-mode-days" checked style="margin:0;cursor:pointer;"/>
+        <div style="flex:1;">
+          <div style="font-weight:700;color:var(--tx);">📆 Split by days</div>
+          <div style="font-size:9px;color:var(--mu);">Divide total time evenly across N consecutive days</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:6px 8px;border:1px solid var(--bd);border-radius:5px;" id="split-mode-hpd-row">
+        <input type="radio" name="splitmode" value="hpd" id="split-mode-hpd" style="margin:0;cursor:pointer;"/>
+        <div style="flex:1;">
+          <div style="font-weight:700;color:var(--tx);">⏱ Split by hours per day</div>
+          <div style="font-size:9px;color:var(--mu);">Use a fixed daily chunk until the task is fully allocated</div>
+        </div>
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label style="font-size:10px;color:var(--mu);flex-shrink:0;" id="split-input-lbl">Number of days:</label>
+      <input type="number" min="1" step="1" class="cdateinp" id="split-num" placeholder="e.g. 3" style="flex:1;" />
+    </div>
+    <div id="split-err" style="font-size:10px;color:var(--rd);min-height:13px;font-family:monospace;"></div>
+    <div id="split-preview" style="font-size:10px;color:var(--gn);min-height:13px;font-family:monospace;"></div>
+    <div class="cdateact">
+      <button class="btn" onclick="closeSplitDlg()">Cancel</button>
+      <button class="btn on" onclick="applySplit()">Apply ✓</button>
     </div>
   </div>
 </div>
@@ -1530,6 +1568,7 @@ function sbCtxAct(action){
   if(!sbCtxData)return;
   var b=sbCtxData.block,iso=sbCtxData.iso;
   if(action==='date'){openCDateDlg('block',iso,b);return;}
+  if(action==='split'){openSplitDlg(b,iso);return;}
   if(action==='proj-all'){
     // push all UNDONE blocks with same project prefix forward by 1 day
     pushU();
@@ -1577,6 +1616,225 @@ function sbCtxAct(action){
   }
   renderCal();
 }
+
+// ════════════════════════════════════════════════
+// SPLIT / DISTRIBUTE TASK (calendar block)
+// ════════════════════════════════════════════════
+var splitState=null; // {block, iso, mode:'days'|'hpd'}
+
+function openSplitDlg(block,iso){
+  if(!block||!iso){return;}
+  splitState={block:block,iso:iso,mode:'days'};
+  var dlg=document.getElementById('splitdlg');
+  if(!dlg)return;
+  // header
+  var totalMins=(block.hours||0)*60+(block.minutes||0);
+  var totalLabel=fmtT(Math.floor(totalMins/60),totalMins%60);
+  if(totalLabel==='—')totalLabel='0m';
+  var desc=document.getElementById('split-desc');
+  if(desc)desc.innerHTML='Splitting <strong>'+escSplit(block.title||'(untitled)')+'</strong> · total '+totalLabel+' · starting '+fmtD(iso);
+  // reset
+  document.getElementById('split-mode-days').checked=true;
+  document.getElementById('split-mode-hpd').checked=false;
+  document.getElementById('split-num').value='';
+  document.getElementById('split-err').textContent='';
+  document.getElementById('split-preview').textContent='';
+  refreshSplitMode();
+  dlg.style.display='flex';
+  setTimeout(function(){var inp=document.getElementById('split-num');if(inp)inp.focus();},80);
+}
+
+function escSplit(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+
+function closeSplitDlg(){
+  var dlg=document.getElementById('splitdlg');
+  if(dlg)dlg.style.display='none';
+  splitState=null;
+}
+
+function refreshSplitMode(){
+  if(!splitState)return;
+  var daysOn=document.getElementById('split-mode-days').checked;
+  splitState.mode=daysOn?'days':'hpd';
+  var lbl=document.getElementById('split-input-lbl');
+  var inp=document.getElementById('split-num');
+  if(daysOn){
+    if(lbl)lbl.textContent='Number of days:';
+    if(inp){inp.placeholder='e.g. 3';inp.step='1';inp.min='1';}
+  } else {
+    if(lbl)lbl.textContent='Hours per day:';
+    if(inp){inp.placeholder='e.g. 2';inp.step='0.25';inp.min='0.0833';}
+  }
+  // re-style the selected row
+  var dr=document.getElementById('split-mode-days-row'),hr=document.getElementById('split-mode-hpd-row');
+  if(dr)dr.style.borderColor=daysOn?'var(--ac)':'var(--bd)';
+  if(hr)hr.style.borderColor=daysOn?'var(--bd)':'var(--ac)';
+  document.getElementById('split-err').textContent='';
+  document.getElementById('split-preview').textContent='';
+}
+
+// Build the split plan: returns {ok:true, parts:[{mins, iso, label}]} or {ok:false, err}
+function computeSplitPlan(block,iso,mode,raw){
+  var totalMins=(block.hours||0)*60+(block.minutes||0);
+  if(totalMins<=0){return{ok:false,err:'Block has no duration to split.'};}
+  if(raw==null||String(raw).trim()===''){return{ok:false,err:'Enter a value.'};}
+  var num=Number(raw);
+  if(!isFinite(num)){return{ok:false,err:'Not a valid number.'};}
+  if(num<=0){return{ok:false,err:'Value must be greater than 0.'};}
+
+  var parts=[];
+  if(mode==='days'){
+    var days=Math.floor(num);
+    if(days!==num){return{ok:false,err:'Number of days must be a whole number.'};}
+    if(days<1){return{ok:false,err:'Need at least 1 day.'};}
+    if(days>366){return{ok:false,err:'Too many days (max 366).'};}
+    if(days===1){return{ok:false,err:'Splitting into 1 day is the same as not splitting.'};}
+    if(days>totalMins){return{ok:false,err:'Too many days for a '+totalMins+'-minute task.'};}
+    var base=Math.floor(totalMins/days);
+    var extra=totalMins-base*days;
+    // distribute the extra minutes onto the LAST `extra` parts (so early days are flat,
+    // last few absorb the remainder — keeps it stable & predictable)
+    for(var i=0;i<days;i++){
+      var m=base+(i>=days-extra?1:0);
+      parts.push({mins:m});
+    }
+  } else { // hpd
+    if(num>24){return{ok:false,err:'Hours per day must be ≤ 24.'};}
+    var chunkMins=Math.round(num*60);
+    if(chunkMins<=0){return{ok:false,err:'Chunk too small (minimum 1 minute).'};}
+    if(chunkMins>=totalMins){return{ok:false,err:'Chunk size ≥ total task duration — nothing to split.'};}
+    var remaining=totalMins;
+    var safety=0;
+    while(remaining>0&&safety<400){
+      var take=Math.min(chunkMins,remaining);
+      parts.push({mins:take});
+      remaining-=take;
+      safety++;
+    }
+    if(safety>=400){return{ok:false,err:'Refusing to create more than 400 parts.'};}
+  }
+
+  // assign isos starting from the original day
+  var cursor=iso;
+  parts.forEach(function(p,idx){p.iso=cursor;p.label='Part '+(idx+1);cursor=addDays(cursor,1);});
+  return{ok:true,parts:parts};
+}
+
+// Strip any existing " — Part N" suffix so re-splitting stays tidy
+function baseSplitTitle(t){
+  if(!t)return'';
+  return String(t).replace(/\s+—\s+Part\s+\d+\s*$/,'').replace(/\s+-\s+Part\s+\d+\s*$/,'');
+}
+
+function applySplit(){
+  if(!splitState)return;
+  var b=splitState.block,iso=splitState.iso,mode=splitState.mode;
+  var raw=document.getElementById('split-num').value;
+  var plan=computeSplitPlan(b,iso,mode,raw);
+  var errEl=document.getElementById('split-err');
+  if(!plan.ok){errEl.textContent='⚠ '+plan.err;return;}
+  errEl.textContent='';
+
+  // Verify the original is still in schedule[iso] — user might have moved it
+  var srcArr=schedule[iso]||[];
+  var srcIdx=-1;
+  for(var i=0;i<srcArr.length;i++){if(srcArr[i].id===b.id){srcIdx=i;break;}}
+  if(srcIdx<0){errEl.textContent='⚠ Could not find this block any more — close and re-try.';return;}
+
+  pushU();
+
+  var baseTitle=baseSplitTitle(b.title);
+  var srcId=b.sourceId||'';
+  var color=b.color||'#6c8aff';
+  var totalParts=plan.parts.length;
+
+  // Replace original at its slot with Part 1
+  var firstPart=plan.parts[0];
+  var firstBlock={
+    id:uid(),
+    title:baseTitle+' — Part 1'+(totalParts>1?' / '+totalParts:''),
+    hours:Math.floor(firstPart.mins/60),
+    minutes:firstPart.mins%60,
+    color:color,
+    done:false,
+    sourceId:srcId,
+    overflow:false,
+    splitOf:b.id,
+    splitGroup:b.id+'_'+Date.now()
+  };
+  // recompute overflow for first day (replacing original — original mins already counted)
+  // We need to splice it in place
+  schedule[iso].splice(srcIdx,1,firstBlock);
+  // recompute overflow for that day
+  recomputeDayOverflow(iso);
+
+  // Append remaining parts on consecutive days at end of those days
+  for(var pi=1;pi<plan.parts.length;pi++){
+    var pp=plan.parts[pi];
+    var partBlock={
+      id:uid(),
+      title:baseTitle+' — Part '+(pi+1)+(totalParts>1?' / '+totalParts:''),
+      hours:Math.floor(pp.mins/60),
+      minutes:pp.mins%60,
+      color:color,
+      done:false,
+      sourceId:srcId,
+      overflow:false,
+      splitOf:b.id,
+      splitGroup:firstBlock.splitGroup
+    };
+    if(!schedule[pp.iso])schedule[pp.iso]=[];
+    schedule[pp.iso].push(partBlock);
+    recomputeDayOverflow(pp.iso);
+  }
+
+  closeSplitDlg();
+  renderCal();
+  queuePlannerSave();
+}
+
+// Recompute overflow flag for every block in a day (used after split inserts/removes)
+function recomputeDayOverflow(iso){
+  var arr=schedule[iso]||[];
+  var max=dayMax(iso);
+  var running=0;
+  arr.forEach(function(blk){
+    var m=(blk.hours||0)*60+(blk.minutes||0);
+    running+=m;
+    blk.overflow=running>max;
+  });
+}
+
+// Wire up radio change listeners (defer to DOM-ready since dialog is in initial HTML)
+(function wireSplitDlgEvents(){
+  function attach(){
+    var d=document.getElementById('split-mode-days');
+    var h=document.getElementById('split-mode-hpd');
+    var n=document.getElementById('split-num');
+    if(d)d.addEventListener('change',refreshSplitMode);
+    if(h)h.addEventListener('change',refreshSplitMode);
+    if(n){
+      n.addEventListener('input',function(){
+        if(!splitState)return;
+        var raw=n.value;
+        var plan=computeSplitPlan(splitState.block,splitState.iso,splitState.mode,raw);
+        var pv=document.getElementById('split-preview');
+        var er=document.getElementById('split-err');
+        if(!plan.ok){pv.textContent='';er.textContent=raw===''?'':'⚠ '+plan.err;return;}
+        er.textContent='';
+        var summary=plan.parts.length+' part'+(plan.parts.length>1?'s':'')+' · ';
+        summary+=plan.parts.map(function(p){var h=Math.floor(p.mins/60),m=p.mins%60;return h?(m?h+'h '+m+'m':h+'h'):(m+'m');}).join(' / ');
+        pv.textContent='✓ '+summary;
+      });
+      n.addEventListener('keydown',function(e){
+        if(e.key==='Enter'){e.preventDefault();applySplit();}
+        if(e.key==='Escape'){closeSplitDlg();}
+      });
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attach);
+  else attach();
+})();
 
 // ════════════════════════════════════════════════
 // DROP ON DAY
@@ -1643,6 +1901,28 @@ document.addEventListener('dragend',function(){clearDropHighlights();hideCalDrop
 var msDragPayStash=null;
 function handleDrop(pay,iso){
   if(pay.kind==='canvas'){
+    // ── Stacked-warning check ── only at actual drop time on a calendar day,
+    // never at dragstart. Lets the user grab + release a stacked block without
+    // a popup as long as they don't drop it on the calendar.
+    // For multi-select drops, check ALL selected blocks for already-stacked.
+    var srcIds=[];
+    if(pay.block&&pay.block.id)srcIds.push(pay.block.id);
+    if(selectedNodes&&selectedNodes.size>1&&pay.block&&selectedNodes.has(pay.block.id)){
+      Array.from(selectedNodes).forEach(function(sid){if(srcIds.indexOf(sid)===-1)srcIds.push(sid);});
+    }
+    var stackedTitles=[];
+    srcIds.forEach(function(sid){
+      var n=nodes.find(function(x){return x.id===sid;});
+      if(n&&!n.repeatable&&(n.stackedCount||0)>0)stackedTitles.push(n.title||'(untitled)');
+    });
+    if(stackedTitles.length){
+      var msg=stackedTitles.length===1
+        ?'"'+stackedTitles[0]+'" is already stacked in the calendar. Stack it again?'
+        :stackedTitles.length+' of these blocks are already stacked in the calendar. Stack them again?\n\n• '+stackedTitles.slice(0,5).join('\n• ')+(stackedTitles.length>5?'\n• …':'');
+      var ok=window.confirm(msg);
+      if(!ok){DragPay=null;return;}
+    }
+
     // detect project drag by _isProject flag OR by finding node with matching id+type
     var srcNode=null;
     if(pay.block._isProject||pay.block.type==='pro'){
@@ -1893,7 +2173,7 @@ function confirmMsSchedule(){
 // ════════════════════════════════════════════════
 var world=document.getElementById('cw'),cpanel=document.getElementById('cp'),cpViewport=document.getElementById('cp-viewport'),cpScrollHost=document.getElementById('cp-scroll-host'),cpScrollSpace=document.getElementById('cp-scroll-space'),topRuler=document.getElementById('ruler-top'),leftRuler=document.getElementById('ruler-left'),drRect=document.getElementById('dr-rect'),selRect=document.getElementById('sel-rect');
 var WORLD_W=6000,WORLD_H=6000,SCROLL_PAD=4000,RULER_SIZE=22;
-var syncingScroll=false,panning=false,panSt={},drawing=false,drawSt={},lasso=false,lassoSt={};
+var syncingScroll=false,panning=false,panSt={},drawing=false,drawSt={},lasso=false,lassoSt={},lassoMoved=false,lassoAdditive=false,lassoPre=new Set();
 var nDrag=null,nDragOff={},nResize=null;
 var ctxTgt=null,ctxWP=null;
 
@@ -2049,8 +2329,8 @@ function fitToContent(){
 function updHint(){
   var el=document.getElementById('th');if(!el)return;
   el.textContent=editMode==='drag'
-    ?'🤚 MOVE MODE — drag anything · scroll=pan · Ctrl+scroll=zoom · right-click=menu'
-    :'✏ EDIT MODE — click to edit content · right-click=create/delete · scroll=pan';
+    ?'🤚 MOVE MODE — drag-empty=lasso · Ctrl+click=multi-select · Space+drag=pan · scroll=pan · right-click=menu'
+    :'✏ EDIT MODE — click to edit · Shift+drag=lasso · Ctrl+click=multi-select · scroll=pan';
 }
 function updateSelBadge(){
   var badge=document.getElementById('sel-badge');
@@ -2102,16 +2382,50 @@ cpViewport.addEventListener('mousedown',function(e){
   var onEmpty=(e.target===cpViewport||e.target===cpanel||e.target===world||e.target===drRect||e.target===selRect);
   var spaceHeld=(_prevTool!==null);
 
-  if(spaceHeld||editMode==='drag'){
-    // Move mode OR space held: clicking empty canvas pans
+  // ── SPACE-HELD = pan in any mode ──
+  if(spaceHeld){
     if(onEmpty){
       panning=true;panSt={x:e.clientX,y:e.clientY,ox:cOffX,oy:cOffY};
       cpanel.style.cursor='grabbing';
       cpanel.classList.add('panning'); cpViewport.classList.add('panning');
     }
-  } else {
-    // Edit mode: draw rect on empty canvas
+    return;
+  }
+
+  // ── DRAG / MOVE MODE — empty drag = LASSO (select rectangle) ──
+  // Pan is still available via space-held + drag, middle mouse, or scrollwheel.
+  if(editMode==='drag'){
     if(onEmpty){
+      // Plain click on empty canvas (no modifier) clears selection
+      if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey&&selectedNodes.size>0){
+        selectedNodes.clear();updateSelBadge();renderCanvas();
+      }
+      // Begin lasso
+      lasso=true;
+      lassoMoved=false;
+      lassoAdditive=(e.shiftKey||e.ctrlKey||e.metaKey);
+      var r1=viewportRect();
+      lassoSt={x:e.clientX-r1.left,y:e.clientY-r1.top};
+      // snapshot of pre-lasso selection so additive mode doesn't double-toggle
+      lassoPre=new Set(Array.from(selectedNodes));
+      selRect.style.cssText='display:block;left:'+lassoSt.x+'px;top:'+lassoSt.y+'px;width:0;height:0;';
+    }
+    return;
+  }
+
+  // ── EDIT MODE ──
+  // Shift+empty drag = LASSO (so selection is also reachable from edit mode).
+  // Plain empty drag = existing draw-rectangle-to-create-block behaviour.
+  if(onEmpty){
+    if(e.shiftKey){
+      lasso=true;
+      lassoMoved=false;
+      lassoAdditive=(e.ctrlKey||e.metaKey);
+      var r3=viewportRect();
+      lassoSt={x:e.clientX-r3.left,y:e.clientY-r3.top};
+      lassoPre=new Set(Array.from(selectedNodes));
+      selRect.style.cssText='display:block;left:'+lassoSt.x+'px;top:'+lassoSt.y+'px;width:0;height:0;';
+    } else {
       drawing=true;var r2=viewportRect();
       drawSt={x:e.clientX-r2.left,y:e.clientY-r2.top};
       drRect.style.cssText='display:block;left:'+drawSt.x+'px;top:'+drawSt.y+'px;width:0;height:0;';
@@ -2133,15 +2447,31 @@ document.addEventListener('mousemove',function(e){
     var lw=Math.abs(cx2-lassoSt.x),lh=Math.abs(cy2-lassoSt.y);
     selRect.style.left=lx+'px';selRect.style.top=ly+'px';
     selRect.style.width=lw+'px';selRect.style.height=lh+'px';
+    if(lw>3||lh>3)lassoMoved=true;
     // live highlight nodes inside lasso rect (canvas coords)
     var lx2=(lx-cOffX)/cScale,ly2=(ly-cOffY)/cScale;
     var lw2=lw/cScale,lh2=lh/cScale;
+    // Lasso selects BLOCKS only (matches existing multi-select drag-to-calendar
+    // semantics). Ctrl/Cmd+click can still toggle selection on any node type.
+    var insideSet=new Set();
     nodes.forEach(function(n){
-      if(n.type==='blk'){
-        var inside=n.x<lx2+lw2&&n.x+(n.w||180)>lx2&&n.y<ly2+lh2&&n.y+40>ly2;
-        if(inside)selectedNodes.add(n.id);else if(!e.shiftKey&&lw>5)selectedNodes.delete(n.id);
-      }
+      if(n.type!=='blk')return;
+      var nw=n.w||180;
+      var nh=Math.max(28,n.h||40);
+      var inside=n.x<lx2+lw2 && n.x+nw>lx2 && n.y<ly2+lh2 && n.y+nh>ly2;
+      if(inside)insideSet.add(n.id);
     });
+    // Apply selection: additive (shift/ctrl) preserves the pre-lasso set,
+    // otherwise selection becomes exactly the inside set.
+    if(lassoAdditive){
+      // start from pre-lasso, add anything currently inside
+      selectedNodes.clear();
+      lassoPre.forEach(function(id){selectedNodes.add(id);});
+      insideSet.forEach(function(id){selectedNodes.add(id);});
+    } else {
+      selectedNodes.clear();
+      insideSet.forEach(function(id){selectedNodes.add(id);});
+    }
     updateSelBadge();
     renderCanvas();
   }
@@ -2198,7 +2528,15 @@ document.addEventListener('mouseup',function(e){
       openCtx(e.clientX,e.clientY,null);
     }
   }
-  if(lasso){lasso=false;selRect.style.display='none';updateSelBadge();renderCanvas();}
+  if(lasso){
+    lasso=false;selRect.style.display='none';
+    if(!lassoMoved&&!lassoAdditive){
+      // Plain click on empty canvas (no drag) — selection was already cleared
+      // in mousedown; nothing more to do.
+    }
+    lassoMoved=false;lassoAdditive=false;lassoPre=new Set();
+    updateSelBadge();renderCanvas();queuePlannerSave();
+  }
   if(nDrag){
     pushU();
     hideGuides();
@@ -2435,12 +2773,11 @@ function mkDotGrip(variant, getDragBlock, title){
   g.addEventListener('dragstart',function(e){
     e.stopPropagation();
     var payload=getDragBlock();
-    var srcNode=(payload&&payload.id)?nodes.find(function(n){return n.id===payload.id;}):null;
-    // Skip stacked warning for repeatable blocks
-    if(srcNode&&srcNode.stackedCount>0&&!srcNode.repeatable){
-      var ok=window.confirm('This item is already stacked in the calendar. Are you sure you want to stack this again?');
-      if(!ok){e.preventDefault();DragPay=null;return;}
-    }
+    // NOTE: the "already stacked" warning has been moved out of dragstart and into
+    // handleDrop() — that way merely starting/aborting an HTML5 drag on the canvas
+    // (e.g. the user grabs the dot-grip but releases on canvas without dropping on
+    // the calendar) no longer triggers the warning. The confirm now only fires when
+    // the user actually drops onto a calendar day.
     DragPay={kind:'canvas',block:payload};
     e.dataTransfer.effectAllowed='copy';
     try{e.dataTransfer.setData('text/plain','dot-grip-drag');}catch(_){}
@@ -2468,33 +2805,73 @@ function setupDrag(handle,n){
     // Never intercept resize handle or delete
     if(e.target.closest('.cn-rsz,.cn-del'))return;
 
+    // ── Ctrl/Cmd + click toggles selection (no drag) ──
+    // Works for canvas blocks/projects/sections/text-boxes — useful from either mode.
+    // Skip when the click is inside an editable input so we don't break typing.
+    if((e.ctrlKey||e.metaKey)&&!e.target.isContentEditable&&!['INPUT','TEXTAREA','BUTTON','SELECT'].includes(e.target.tagName)){
+      if(e.target.closest('.dot-grip,.cnb-mode,.stage-del,.proj-add,.cdots,.cdot'))return;
+      e.stopPropagation();e.preventDefault();
+      if(selectedNodes.has(n.id))selectedNodes.delete(n.id);
+      else selectedNodes.add(n.id);
+      updateSelBadge();renderCanvas();
+      return;
+    }
+
     if(editMode==='drag'){
       // MOVE MODE: the ENTIRE element drags — block ALL child interactions
       e.stopPropagation();e.preventDefault();
-      // Calculate children if this is a section
-      var children=n.type==='sec'?getNodesInsideSection(n):[];
+
+      // ── Build list of children that should drag along ──
+      // 1) Section: drags everything inside its bounds (existing behaviour)
+      // 2) Multi-select: if the dragged node is part of selectedNodes (size>1),
+      //    every other selected node moves with it, preserving relative offsets.
+      var children=[];
+      if(n.type==='sec'){
+        children=getNodesInsideSection(n);
+      } else if(selectedNodes.size>1&&selectedNodes.has(n.id)){
+        children=Array.from(selectedNodes)
+          .filter(function(id){return id!==n.id;})
+          .map(function(id){return nodes.find(function(x){return x.id===id;});})
+          .filter(function(x){return x;});
+      }
       nDrag={
         node:n,
         children:children,
-        childOffsets:children.map(function(c){return{id:c.id,dx:c.x-n.x,dy:c.y-n.y};})
+        childOffsets:children.map(function(c){return{id:c.id,dx:(c.x||0)-(n.x||0),dy:(c.y||0)-(n.y||0)};})
       };
       var vr=viewportRect();
       nDragOff.x=(e.clientX-vr.left-cOffX)/cScale-n.x;
       nDragOff.y=(e.clientY-vr.top-cOffY)/cScale-n.y;
       var el=document.getElementById(n.id);
       if(el)el.classList.add('dragging');
+      // Mark moving children with a CSS hook too (cheap visual feedback)
+      children.forEach(function(c){var ce=document.getElementById(c.id);if(ce)ce.classList.add('dragging');});
       cpanel.style.cursor='grabbing';
     } else {
       // EDIT MODE: only drag from non-editable areas (bar/header)
       if(e.target.isContentEditable||['INPUT','TEXTAREA','BUTTON','SELECT'].includes(e.target.tagName))return;
       if(e.target.closest('.dot-grip,.cnb-mode,.stage-del,.proj-add,.cdots,.cdot,.cn-rsz'))return;
       e.stopPropagation();e.preventDefault();
-      nDrag={node:n,children:[],childOffsets:[]};
+
+      // Multi-select drag also available from edit mode (bar/header drag)
+      var children2=[];
+      if(selectedNodes.size>1&&selectedNodes.has(n.id)){
+        children2=Array.from(selectedNodes)
+          .filter(function(id){return id!==n.id;})
+          .map(function(id){return nodes.find(function(x){return x.id===id;});})
+          .filter(function(x){return x;});
+      }
+      nDrag={
+        node:n,
+        children:children2,
+        childOffsets:children2.map(function(c){return{id:c.id,dx:(c.x||0)-(n.x||0),dy:(c.y||0)-(n.y||0)};})
+      };
       var vr=viewportRect();
       nDragOff.x=(e.clientX-vr.left-cOffX)/cScale-n.x;
       nDragOff.y=(e.clientY-vr.top-cOffY)/cScale-n.y;
       var el2=document.getElementById(n.id);
       if(el2)el2.classList.add('dragging');
+      children2.forEach(function(c){var ce=document.getElementById(c.id);if(ce)ce.classList.add('dragging');});
       cpanel.style.cursor='grabbing';
     }
   });
