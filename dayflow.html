@@ -243,26 +243,79 @@ window.addEventListener('message',function(e){
     document.documentElement.setAttribute('data-theme',e.data.dark?'dark':'light');
   }
   // Kickstart block from FitLog/Daily Log wake time
+  // Accepts: wakeHH/wakeMM (required), workStartHH/workStartMM (optional),
+  //          dateKey (optional, defaults to today). Both inputs trigger a single
+  //          per-date Kickstart block: start=wake, end=workStart (or now if today
+  //          and workStart missing). Editing either side updates the block in place
+  //          (no duplicates). Validates against invalid (workStart < wake) windows.
   if(e.data&&e.data.type==='dayflow_kickstart'){
-    var wakeHH=parseInt(e.data.wakeHH)||0;
-    var wakeMM=parseInt(e.data.wakeMM)||0;
-    var todayKey=getTodayKey();
-    // wakeMin is minutes within the day
-    var wakeMin=wakeHH*60+wakeMM;
-    // nowRenderMin relative to window
-    var nowRM=getNowRenderMin();
-    // renderMin for wake time on today
-    var wakeRM=getRenderMinForDateKey(todayKey)+wakeMin;
-    var dur=Math.max(5,nowRM-wakeRM);
-    var kickColor={r:255,g:167,b:38,a:55};
-    var kickId='auto_kickstart_today';
-    // Remove existing kickstart for today
-    placed.filter(function(pb){return pb.id===kickId;}).forEach(function(pb){
-      pb.el.remove(); placed=placed.filter(function(q){return q.id!==kickId;});
-    });
-    // Place locked kickstart block
-    placeBlock('kickstart','\u{1F305} Kickstart',kickColor,wakeMin,dur,kickId,Date.now(),todayKey);
-    updateNotepad();
+    try{
+      var wakeHH=parseInt(e.data.wakeHH);
+      var wakeMM=parseInt(e.data.wakeMM)||0;
+      if(!isFinite(wakeHH)||wakeHH<0||wakeHH>23){return;}
+      var hasWS = (e.data.workStartHH!==undefined && e.data.workStartHH!==null && e.data.workStartHH!=='');
+      var wsHH = hasWS ? parseInt(e.data.workStartHH) : null;
+      var wsMM = hasWS ? (parseInt(e.data.workStartMM)||0) : null;
+      if(hasWS && (!isFinite(wsHH)||wsHH<0||wsHH>23)){hasWS=false;}
+
+      var dateKey = e.data.dateKey || getTodayKey();
+      var todayKey = getTodayKey();
+
+      var wakeMin = wakeHH*60+wakeMM;
+      var endMin;
+      if(hasWS){
+        endMin = wsHH*60+wsMM;
+        // If workStart < wake we treat as invalid for now (no cross-midnight Kickstart)
+        // and silently bail out — we don't crash and we don't make a tiny block.
+        if(endMin<=wakeMin){
+          // Remove any stale block for this date so the canvas matches reality
+          var staleId='auto_kickstart_'+dateKey;
+          placed.filter(function(pb){return pb.id===staleId;}).forEach(function(pb){
+            if(pb.el)pb.el.remove();
+            placed=placed.filter(function(q){return q.id!==staleId;});
+          });
+          // Also remove the legacy "today" id if it's there
+          if(dateKey===todayKey){
+            placed.filter(function(pb){return pb.id==='auto_kickstart_today';}).forEach(function(pb){
+              if(pb.el)pb.el.remove();
+              placed=placed.filter(function(q){return q.id!=='auto_kickstart_today';});
+            });
+          }
+          updateNotepad(); saveState();
+          return;
+        }
+      } else {
+        // No workStart yet — only fall back to "now" if the date is today,
+        // otherwise we can't infer an end and we don't create a block.
+        if(dateKey!==todayKey){
+          updateNotepad(); saveState();
+          return;
+        }
+        var nowRM = getNowRenderMin();
+        var wakeRM = getRenderMinForDateKey(todayKey)+wakeMin;
+        var dur = Math.max(5, nowRM-wakeRM);
+        endMin = wakeMin + dur;
+      }
+
+      var dur2 = Math.max(5, endMin - wakeMin);
+      var kickColor={r:255,g:167,b:38,a:55};
+      var kickId='auto_kickstart_'+dateKey;
+
+      // Remove ALL existing kickstart blocks for this date (handles legacy
+      // "auto_kickstart_today" id from earlier app versions and any stragglers).
+      var legacyTodayId = (dateKey===todayKey) ? 'auto_kickstart_today' : null;
+      placed.filter(function(pb){
+        return pb.id===kickId || (legacyTodayId && pb.id===legacyTodayId);
+      }).forEach(function(pb){
+        if(pb.el)pb.el.remove();
+        placed=placed.filter(function(q){return q.id!==pb.id;});
+      });
+
+      placeBlock('kickstart','\u{1F305} Kickstart',kickColor,wakeMin,dur2,kickId,Date.now(),dateKey);
+      updateNotepad();
+      saveState();
+    }catch(err){console.warn('[DayFlow] Kickstart error:',err);}
+    return;
   }
   // Job days updated from Shift Tracker
   if(e.data&&e.data.type==='job_days_updated'&&e.data.jobDates){
