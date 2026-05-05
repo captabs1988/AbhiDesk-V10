@@ -1760,6 +1760,81 @@ st.textContent=`
 [data-theme="light"] .dy-time-pill{background:rgba(58,95,217,.08);}
 [data-theme="light"] .dy-shift-banner{background:linear-gradient(135deg,rgba(217,119,6,.1),rgba(217,119,6,.04));}
 [data-theme="light"] .dy-subsection{background:rgba(58,95,217,.04);}
+
+/* ════════════════════════════════════════════════════════
+   RICH-TEXT EDITOR (Dairy text sections)
+   ════════════════════════════════════════════════════════ */
+.dy-rt-wrap{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg);}
+.dy-rt-wrap.focused{border-color:var(--accent);}
+.dy-section.yesterday .dy-rt-wrap.focused{border-color:var(--accent2);}
+.dy-section.debrief .dy-rt-wrap.focused{border-color:var(--green);}
+
+.dy-rt-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:5px 6px;background:var(--surface);border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;}
+.dy-rt-tg{display:inline-flex;align-items:center;gap:1px;padding:0 3px;border-right:1px solid var(--border);}
+.dy-rt-tg:last-child{border-right:none;}
+.dy-rt-btn{min-width:24px;height:24px;padding:0 5px;border:1px solid transparent;background:transparent;color:var(--text);font-size:11px;font-family:inherit;cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s;line-height:1;font-weight:600;}
+.dy-rt-btn:hover{background:rgba(108,138,255,.12);border-color:rgba(108,138,255,.3);color:var(--accent);}
+.dy-rt-btn.active{background:rgba(108,138,255,.2);border-color:var(--accent);color:var(--accent);}
+.dy-rt-btn b,.dy-rt-btn i,.dy-rt-btn u,.dy-rt-btn s{font-style:inherit;font-weight:inherit;text-decoration:inherit;}
+.dy-rt-btn b{font-weight:800;}
+.dy-rt-btn i{font-style:italic;}
+.dy-rt-btn u{text-decoration:underline;}
+.dy-rt-btn s{text-decoration:line-through;}
+.dy-rt-sel{height:24px;padding:0 4px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:10px;font-family:inherit;border-radius:4px;cursor:pointer;outline:none;max-width:96px;}
+.dy-rt-sel:hover{border-color:var(--accent);}
+.dy-rt-sel:focus{border-color:var(--accent);}
+.dy-rt-color{position:relative;padding:0 4px;flex-direction:column;line-height:1;}
+.dy-rt-color .dy-rt-color-bar{display:block;width:14px;height:3px;margin-top:1px;border-radius:1px;background:#000;}
+.dy-rt-find{display:flex;align-items:center;gap:4px;padding:0 4px;}
+.dy-rt-find input{height:22px;width:130px;padding:0 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:4px;outline:none;font-family:inherit;}
+.dy-rt-find input:focus{border-color:var(--accent);}
+.dy-rt-findcount{font-size:9px;color:var(--muted);min-width:36px;text-align:center;}
+
+.dy-rt-editor{min-height:160px;max-height:600px;overflow-y:auto;padding:10px 12px;font-family:'DM Sans','Syne',sans-serif;font-size:13px;line-height:1.7;color:var(--text);outline:none;word-wrap:break-word;}
+.dy-rt-editor:empty:before{content:attr(data-placeholder);color:var(--muted);font-style:italic;pointer-events:none;}
+.dy-rt-editor:focus{outline:none;}
+.dy-rt-editor::-webkit-scrollbar{width:6px;}
+.dy-rt-editor::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.dy-rt-editor h1{font-size:22px;font-weight:800;margin:14px 0 8px;line-height:1.25;}
+.dy-rt-editor h2{font-size:18px;font-weight:800;margin:12px 0 6px;line-height:1.3;}
+.dy-rt-editor h3{font-size:15px;font-weight:700;margin:10px 0 5px;line-height:1.35;}
+.dy-rt-editor p{margin:0 0 8px;}
+.dy-rt-editor ul,.dy-rt-editor ol{margin:0 0 8px 0;padding-left:24px;}
+.dy-rt-editor li{margin:0 0 3px;}
+.dy-rt-editor blockquote{margin:6px 0;padding:4px 12px;border-left:3px solid var(--accent);color:var(--text);background:rgba(108,138,255,.06);border-radius:0 4px 4px 0;}
+.dy-rt-editor a{color:var(--accent);text-decoration:underline;cursor:pointer;}
+.dy-rt-editor hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
+.dy-rt-editor mark.dy-rt-hit{background:rgba(245,158,11,.45);color:inherit;padding:0;border-radius:2px;}
+.dy-rt-editor mark.dy-rt-hit.current{background:rgba(245,158,11,.85);outline:1px solid var(--gold);}
+
+.dy-rt-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 10px;background:var(--surface);border-top:1px solid var(--border);font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--muted);}
+.dy-rt-wc{font-weight:600;}
+.dy-rt-fkey{font-style:italic;opacity:.7;}
+
+/* AUTO-INJECTED DAYFLOW PLAN BLOCK INSIDE BRIEFING */
+.dy-rt-editor [data-df-plan="1"]{margin:10px 0 4px;padding:10px 12px 10px 14px;background:rgba(108,138,255,.08);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.55;color:var(--text);user-select:text;cursor:default;}
+.dy-rt-editor [data-df-plan="1"] .dy-rt-plan-h{font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.dy-rt-editor [data-df-plan="1"] .dy-rt-plan-h .dy-rt-plan-tag{font-weight:400;letter-spacing:.5px;text-transform:none;font-size:9px;color:var(--muted);font-style:italic;}
+.dy-rt-editor [data-df-plan="1"] ul{list-style:none;padding-left:0;margin:0;}
+.dy-rt-editor [data-df-plan="1"] li{margin:1px 0;display:flex;gap:8px;}
+.dy-rt-editor [data-df-plan="1"] li:before{content:"•";color:var(--accent);}
+.dy-rt-editor [data-df-plan="1"] .dy-rt-plan-time{color:var(--accent);font-weight:700;flex-shrink:0;min-width:106px;}
+.dy-rt-editor [data-df-plan="1"] .dy-rt-plan-name{flex:1;}
+.dy-rt-editor [data-df-plan="1"] .dy-rt-plan-empty{color:var(--muted);font-style:italic;font-size:10px;}
+
+/* COLOR PICKER POPUP */
+.dy-rt-pop{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px;display:grid;grid-template-columns:repeat(7,18px);gap:4px;z-index:9999;box-shadow:0 6px 22px rgba(0,0,0,.45);}
+.dy-rt-pop-sw{width:18px;height:18px;border:1px solid rgba(0,0,0,.25);border-radius:3px;cursor:pointer;padding:0;}
+.dy-rt-pop-sw:hover{transform:scale(1.15);}
+.dy-rt-pop-clear{grid-column:1/-1;font-size:9px;font-family:'JetBrains Mono',monospace;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;padding:3px;}
+.dy-rt-pop-clear:hover{color:var(--text);border-color:var(--accent);}
+
+/* LIGHT THEME for editor */
+[data-theme="light"] .dy-rt-editor{background:#fff;}
+[data-theme="light"] .dy-rt-toolbar{background:#f7f9fc;}
+[data-theme="light"] .dy-rt-footer{background:#f7f9fc;}
+[data-theme="light"] .dy-rt-editor [data-df-plan="1"]{background:rgba(58,95,217,.06);}
+[data-theme="light"] .dy-rt-pop{background:#ffffff;box-shadow:0 6px 22px rgba(0,0,0,.18);}
 .vn-toolbar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
 .vn-toolbar h2{font-size:12px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;}
 .vn-inner{display:flex;flex:1;overflow:hidden;}
@@ -2694,9 +2769,9 @@ function dyQueueSave(){clearTimeout(dySaveTimer);dySaveTimer=setTimeout(dySave,4
 // ── Entry helpers ──
 function dyGetEntry(k,createIfMissing){
   if(!dyData.entries[k]){
-    if(!createIfMissing)return{dateKey:k,instructionsFromYesterday:'',todaysBriefing:'',dayflowPlanNote:'',endOfDayDebriefing:''};
+    if(!createIfMissing)return{dateKey:k,instructionsFromYesterday:'',todaysBriefing:'',endOfDayDebriefing:'',instructionsFromYesterdayHtml:'',todaysBriefingHtml:'',endOfDayDebriefingHtml:''};
     var now=new Date().toISOString();
-    dyData.entries[k]={dateKey:k,instructionsFromYesterday:'',todaysBriefing:'',dayflowPlanNote:'',endOfDayDebriefing:'',createdAt:now,updatedAt:now};
+    dyData.entries[k]={dateKey:k,instructionsFromYesterday:'',todaysBriefing:'',endOfDayDebriefing:'',instructionsFromYesterdayHtml:'',todaysBriefingHtml:'',endOfDayDebriefingHtml:'',createdAt:now,updatedAt:now};
   }
   return dyData.entries[k];
 }
@@ -2708,7 +2783,13 @@ function dyPatchEntry(k,patch){
 }
 function dyHasContent(e){
   if(!e)return false;
-  return!!(e.instructionsFromYesterday||e.todaysBriefing||e.dayflowPlanNote||e.endOfDayDebriefing);
+  if(e.instructionsFromYesterday||e.todaysBriefing||e.endOfDayDebriefing)return true;
+  // Rich-text era — only count as "having content" if HTML strips to something
+  // non-empty (avoids treating an empty <p><br></p> as content)
+  if(e.instructionsFromYesterdayHtml&&dyHtmlToText(e.instructionsFromYesterdayHtml).trim())return true;
+  if(e.todaysBriefingHtml&&dyHtmlToText(e.todaysBriefingHtml).trim())return true;
+  if(e.endOfDayDebriefingHtml&&dyHtmlToText(e.endOfDayDebriefingHtml).trim())return true;
+  return false;
 }
 
 // ── Cross-panel data readers (read-only, no copies) ──
@@ -2727,11 +2808,26 @@ function dyReadShifts(k){
     return sh.filter(function(s){return s&&s.date===k;});
   }catch(_){return[];}
 }
-function dyReadDayflowNote(){
-  // Single multi-day note from DayFlow's notepad — we surface it for "today"
-  // and also keep a dated snapshot inside the Dairy entry so historical days
-  // preserve whatever the plan looked like at the time the user viewed Dairy.
-  try{return localStorage.getItem('dayflow_note')||'';}catch(_){return'';}
+// ── DayFlow plan for a SPECIFIC date ──
+// Reads localStorage.dayflow_placed (DayFlow's persisted block array) and
+// returns blocks whose dateKey matches `k`, sorted by start time. Each block
+// has { name, startMin, duration, blockId }. Returned in plain form so the
+// editor can render a self-contained, read-only "plan strip" inside the
+// Today's Briefing editor.
+function dyReadDayflowPlanForDate(k){
+  try{
+    var raw=localStorage.getItem('dayflow_placed');
+    if(!raw)return[];
+    var arr=JSON.parse(raw);
+    if(!Array.isArray(arr))return[];
+    return arr.filter(function(b){return b&&b.dateKey===k;})
+      .sort(function(a,b){return (a.startMin||0)-(b.startMin||0);});
+  }catch(_){return[];}
+}
+function dyFmtMinHM(m){
+  m=Math.max(0,Math.round(m||0));
+  var h=Math.floor(m/60),mm=m%60;
+  return dyPad(h)+':'+dyPad(mm);
 }
 
 // Public bridge — index.html's notifyDayflowKickstart() calls this so the Dairy
@@ -2747,19 +2843,18 @@ window.dairyOnFitlogChange=function(dateKey){
   hdr.innerHTML=dyTimesHTML(f.wake,f.workStart);
 };
 
-// ── Sync DayFlow plan note into today's entry on render (Part 6) ──
-function dySyncDayflowNoteIfRelevant(dateKey){
-  // Only the currently-visible-in-DayFlow plan can be considered fresh. We snap
-  // it onto today's entry so historical entries don't get overwritten when the
-  // user visits Dairy on a different day. This preserves manually-typed text
-  // because we keep manual briefing in `todaysBriefing` and the plan note in
-  // a separate field `dayflowPlanNote` rendered as a labelled subsection.
-  if(dateKey!==dyTodayKey())return;
-  var note=dyReadDayflowNote();
-  var e=dyGetEntry(dateKey,false);
-  if((e.dayflowPlanNote||'')===note)return;
-  dyPatchEntry(dateKey,{dayflowPlanNote:note});
-}
+// Public bridge — DayFlow saveState() can call this so the plan strip in the
+// Today's Briefing editor refreshes live as blocks are added/moved.
+// `dateKey` may be null — in that case we refresh whatever the user is currently
+// viewing (cheap; just rebuilds the small plan node, no editor reset).
+window.dairyOnDayflowChange=function(dateKey){
+  if(!dyBuilt)return;
+  if(dyData.view!=='daily')return;
+  if(dateKey&&dateKey!==dyData.cursor)return;
+  // Re-inject the plan block inside the Today's Briefing rich-text editor
+  var ed=document.getElementById('dy-rt-tb');
+  if(ed&&typeof window._dyInjectPlanBlock==='function')window._dyInjectPlanBlock(ed,dyData.cursor);
+};
 
 // ── Build skeleton ──
 function dyBuild(){
@@ -2825,8 +2920,13 @@ function escHTML(s){var d=document.createElement('div');d.textContent=String(s==
 function dyRenderDaily(){
   var host=document.getElementById('dy-scroll');if(!host)return;
   var k=dyData.cursor||dyTodayKey();
-  dySyncDayflowNoteIfRelevant(k);
   var e=dyGetEntry(k,false);
+  // ── Migration: if entry has plain-text fields but no HTML twin, copy ──
+  // (idempotent — only happens when the HTML key is missing)
+  ['instructionsFromYesterday','todaysBriefing','endOfDayDebriefing'].forEach(function(f){
+    var hk=f+'Html';
+    if(!e[hk]&&e[f]){e[hk]=dyTextToHtml(e[f]);}
+  });
   var f=dyReadFitlog(k);
   var shifts=dyReadShifts(k);
   var todayK=dyTodayKey();
@@ -2853,16 +2953,6 @@ function dyRenderDaily(){
       '</div>';
   }
 
-  var noteSubsec=(e.dayflowPlanNote&&e.dayflowPlanNote.trim())
-    ?'<div class="dy-subsection">'+
-       '<div class="dy-subsection-title">📋 DayFlow Plan Note <span style="font-weight:400;font-size:9px;opacity:.65;text-transform:none;letter-spacing:.5px;">auto-imported · don\'t edit here</span></div>'+
-       '<div class="dy-subsection-text">'+escHTML(e.dayflowPlanNote)+'</div>'+
-     '</div>'
-    :'<div class="dy-subsection">'+
-       '<div class="dy-subsection-title">📋 DayFlow Plan Note</div>'+
-       '<div class="dy-subsection-empty">No plan note yet — place blocks in DayFlow and it will appear here.</div>'+
-     '</div>';
-
   var meta=(e.createdAt||e.updatedAt)
     ?'<div class="dy-meta">'+
        (e.createdAt?'<span>Created: '+dyFmtMetaTs(e.createdAt)+'</span>':'')+
@@ -2881,16 +2971,15 @@ function dyRenderDaily(){
       shiftHTML+
       '<div class="dy-section yesterday">'+
         '<h3><span class="ico">📨</span> Instructions From Yesterday</h3>'+
-        '<textarea class="dy-textarea" id="dy-iy" placeholder="Notes carried forward from yesterday — what you decided to do today, things you promised yourself, etc.">'+escHTML(e.instructionsFromYesterday||'')+'</textarea>'+
+        dyMakeRTHTML('iy', e.instructionsFromYesterdayHtml||'', "Notes carried forward from yesterday — what you decided to do today, things you promised yourself, etc.")+
       '</div>'+
       '<div class="dy-section today-brief">'+
         '<h3><span class="ico">🌅</span> Today\'s Briefing</h3>'+
-        '<textarea class="dy-textarea" id="dy-tb" placeholder="Plan for today — priorities, focus, intentions...">'+escHTML(e.todaysBriefing||'')+'</textarea>'+
-        noteSubsec+
+        dyMakeRTHTML('tb', e.todaysBriefingHtml||'', "Plan for today — priorities, focus, intentions...")+
       '</div>'+
       '<div class="dy-section debrief">'+
         '<h3><span class="ico">🌙</span> End-of-Day Debriefing</h3>'+
-        '<textarea class="dy-textarea" id="dy-eod" placeholder="Reflect on today — what worked, what didn\'t, instructions for tomorrow...">'+escHTML(e.endOfDayDebriefing||'')+'</textarea>'+
+        dyMakeRTHTML('eod', e.endOfDayDebriefingHtml||'', "Reflect on today — what worked, what didn't, instructions for tomorrow...")+
         '<div class="dy-debrief-actions">'+
           '<button class="dy-action primary" onclick="dairyPushTomorrow()">📤 Push to Tomorrow ▶</button>'+
         '</div>'+
@@ -2898,18 +2987,14 @@ function dyRenderDaily(){
       meta+
     '</div>';
 
-  // Wire textarea autosave
-  ['dy-iy','dy-tb','dy-eod'].forEach(function(id){
-    var ta=document.getElementById(id);
-    if(!ta)return;
-    ta.addEventListener('input',function(){
-      var patch={};
-      if(id==='dy-iy')patch.instructionsFromYesterday=ta.value;
-      if(id==='dy-tb')patch.todaysBriefing=ta.value;
-      if(id==='dy-eod')patch.endOfDayDebriefing=ta.value;
-      dyPatchEntry(k,patch);
-    });
-  });
+  // Wire up each rich-text editor
+  dyAttachRT('iy', k, function(html){dyPatchEntry(k,{instructionsFromYesterdayHtml:html, instructionsFromYesterday:dyHtmlToText(html)});});
+  dyAttachRT('tb', k, function(html){dyPatchEntry(k,{todaysBriefingHtml:html, todaysBriefing:dyHtmlToText(html)});});
+  dyAttachRT('eod', k, function(html){dyPatchEntry(k,{endOfDayDebriefingHtml:html, endOfDayDebriefing:dyHtmlToText(html)});});
+
+  // Inject the live DayFlow plan into the Today's Briefing editor
+  var tbEd=document.getElementById('dy-rt-tb');
+  if(tbEd)window._dyInjectPlanBlock(tbEd,k);
 }
 
 function dyFmtMetaTs(iso){
@@ -2920,16 +3005,21 @@ function dyFmtMetaTs(iso){
 window.dairyPushTomorrow=function(){
   var k=dyData.cursor||dyTodayKey();
   var src=dyGetEntry(k,false);
+  // Prefer HTML if present, fall back to legacy plain text
+  var srcHtml=(src.endOfDayDebriefingHtml||'').trim();
   var srcText=(src.endOfDayDebriefing||'').trim();
-  if(!srcText){
+  if(!srcHtml&&srcText)srcHtml=dyTextToHtml(srcText);
+  if(!srcHtml){
     alert('Nothing to push — End-of-Day Debriefing is empty for '+dyFmtDate(k)+'.');
     return;
   }
   var tk=dyAddDays(k,1);
   var dst=dyGetEntry(tk,false);
-  var existing=(dst.instructionsFromYesterday||'').trim();
-  var finalText=srcText;
-  if(existing){
+  var existingHtml=(dst.instructionsFromYesterdayHtml||'').trim();
+  var existingText=(dst.instructionsFromYesterday||'').trim();
+  if(!existingHtml&&existingText)existingHtml=dyTextToHtml(existingText);
+  var finalHtml=srcHtml;
+  if(existingHtml){
     var choice=window.prompt(
       'Tomorrow ('+dyFmtDate(tk)+') already has Instructions From Yesterday.\n\n'+
       'Type one of:\n'+
@@ -2941,11 +3031,14 @@ window.dairyPushTomorrow=function(){
     if(!choice)return;
     var c=choice.trim().toUpperCase().charAt(0);
     if(c==='C')return;
-    if(c==='A'){finalText=existing+'\n\n— — —\n\n'+srcText;}
-    else if(c==='R'){finalText=srcText;}
+    if(c==='A'){finalHtml=existingHtml+'<hr>'+srcHtml;}
+    else if(c==='R'){finalHtml=srcHtml;}
     else{alert('Cancelled — unrecognised option.');return;}
   }
-  dyPatchEntry(tk,{instructionsFromYesterday:finalText});
+  dyPatchEntry(tk,{
+    instructionsFromYesterdayHtml:finalHtml,
+    instructionsFromYesterday:dyHtmlToText(finalHtml)
+  });
   dySave(); // flush immediately
   // Visual confirmation
   var toast=document.createElement('div');
@@ -2978,8 +3071,12 @@ function dyRenderMonthly(){
     if(k===todayK)classes+=' today';
     if(shifts.length)classes+=' has-shift';
     if(!dyHasContent(e)&&!shifts.length&&!f.wake)classes+=' empty';
-    // Preview text: prefer todaysBriefing, fall back to others
-    var pv=(e.todaysBriefing||e.endOfDayDebriefing||e.instructionsFromYesterday||'').trim();
+    // Preview text: prefer HTML-derived plain text, fall back to legacy plain
+    var pv=(
+      (e.todaysBriefingHtml?dyHtmlToText(e.todaysBriefingHtml):e.todaysBriefing)||
+      (e.endOfDayDebriefingHtml?dyHtmlToText(e.endOfDayDebriefingHtml):e.endOfDayDebriefing)||
+      (e.instructionsFromYesterdayHtml?dyHtmlToText(e.instructionsFromYesterdayHtml):e.instructionsFromYesterday)||''
+    ).trim();
     pv=pv?escHTML(pv).slice(0,140):'No entry yet — click to start.';
     var times='';
     if(f.wake||f.workStart){
@@ -3029,7 +3126,11 @@ function dyRenderYearly(){
     if(withContent.length){
       withContent.sort();
       var lastE=dyData.entries[withContent[withContent.length-1]];
-      pv=(lastE.todaysBriefing||lastE.endOfDayDebriefing||lastE.instructionsFromYesterday||'').trim();
+      pv=(
+        (lastE.todaysBriefingHtml?dyHtmlToText(lastE.todaysBriefingHtml):lastE.todaysBriefing)||
+        (lastE.endOfDayDebriefingHtml?dyHtmlToText(lastE.endOfDayDebriefingHtml):lastE.endOfDayDebriefing)||
+        (lastE.instructionsFromYesterdayHtml?dyHtmlToText(lastE.instructionsFromYesterdayHtml):lastE.instructionsFromYesterday)||''
+      ).trim();
       if(pv)pv=escHTML(pv).slice(0,160);
     }
     if(!pv)pv='No entries yet.';
@@ -3060,7 +3161,12 @@ function dyBuildGiantText(monthCursor){
     var e=dyGetEntry(k,false);
     var f=dyReadFitlog(k);
     var shifts=dyReadShifts(k);
-    var hasAnything=dyHasContent(e)||shifts.length||f.wake||f.workStart;
+    var planBlocks=dyReadDayflowPlanForDate(k);
+    // Prefer HTML→plain conversion (covers the rich-text era), fall back to legacy plain
+    var iyText=(e.instructionsFromYesterdayHtml?dyHtmlToText(e.instructionsFromYesterdayHtml):e.instructionsFromYesterday)||'';
+    var tbText=(e.todaysBriefingHtml?dyHtmlToText(e.todaysBriefingHtml):e.todaysBriefing)||'';
+    var eodText=(e.endOfDayDebriefingHtml?dyHtmlToText(e.endOfDayDebriefingHtml):e.endOfDayDebriefing)||'';
+    var hasAnything=iyText||tbText||eodText||shifts.length||f.wake||f.workStart||planBlocks.length;
     if(!hasAnything)continue;
     rendered++;
     lines.push('================================');
@@ -3088,24 +3194,27 @@ function dyBuildGiantText(monthCursor){
         lines.push('');
       });
     }
-    if(e.instructionsFromYesterday){
+    if(iyText){
       lines.push('Instructions From Yesterday:');
-      lines.push(e.instructionsFromYesterday);
+      lines.push(iyText);
       lines.push('');
     }
-    if(e.todaysBriefing||e.dayflowPlanNote){
+    if(tbText||planBlocks.length){
       lines.push("Today's Briefing:");
-      if(e.todaysBriefing){lines.push(e.todaysBriefing);}
-      if(e.dayflowPlanNote){
-        if(e.todaysBriefing)lines.push('');
-        lines.push('— DayFlow Plan Note —');
-        lines.push(e.dayflowPlanNote);
+      if(tbText){lines.push(tbText);}
+      if(planBlocks.length){
+        if(tbText)lines.push('');
+        lines.push('— DayFlow Plan ('+planBlocks.length+' block'+(planBlocks.length===1?'':'s')+') —');
+        planBlocks.forEach(function(b){
+          var s=b.startMin||0,e2=s+(b.duration||0);
+          lines.push('  '+dyFmtMinHM(s)+'-'+dyFmtMinHM(e2)+'  '+(b.name||'(untitled)'));
+        });
       }
       lines.push('');
     }
-    if(e.endOfDayDebriefing){
+    if(eodText){
       lines.push('End-of-Day Debriefing:');
-      lines.push(e.endOfDayDebriefing);
+      lines.push(eodText);
       lines.push('');
     }
     lines.push('');
@@ -3216,6 +3325,596 @@ function dyRenderAll(){
   else if(dyData.view==='giant')dyRenderGiant();
 }
 
+// ════════════════════════════════════════════════════════
+// RICH-TEXT EDITOR (used by all three Dairy text sections)
+// ════════════════════════════════════════════════════════
+// Architecture:
+//   - One contenteditable per section. Storage stays per-entry as `${field}Html`.
+//   - Legacy plain-text fields (`instructionsFromYesterday` etc.) are kept in
+//     sync on every save, so old code paths and exports keep working.
+//   - DayFlow plan is injected as a self-contained, non-editable HTML block
+//     (data-df-plan="1") at the top of the Today's Briefing editor. It's
+//     stripped from the saved HTML so it never accumulates inside storage.
+//   - All formatting commands run via document.execCommand. We use it because
+//     it's still the simplest cross-browser path for a small editor like this,
+//     and it gives the user native undo/redo without us hand-rolling a stack.
+
+var DY_RT_FONTS=[
+  ['','Default'],['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','Times'],
+  ['Courier New','Courier'],['Verdana','Verdana'],['Tahoma','Tahoma'],
+  ["'JetBrains Mono',monospace",'Mono'],["'DM Sans',sans-serif",'Sans']
+];
+var DY_RT_SIZES=['10','11','12','13','14','16','18','20','24','28','32'];
+var DY_RT_LINEH=[['','Default'],['1','1.0'],['1.15','1.15'],['1.5','1.5'],['1.75','1.75'],['2','2.0']];
+var DY_RT_TEXT_COLORS=['#0e1116','#374151','#6b7280','#dc2626','#ea580c','#d97706','#ca8a04','#16a34a','#0891b2','#2563eb','#7c3aed','#c026d3'];
+var DY_RT_HL_COLORS=['#fef3c7','#fde68a','#fbbf24','#fca5a5','#fb923c','#86efac','#67e8f9','#93c5fd','#c4b5fd','#f0abfc','transparent'];
+
+// Build the toolbar + editor HTML for a section.
+// `slot` is one of 'iy', 'tb', 'eod' so the IDs stay unique.
+function dyMakeRTHTML(slot, html, placeholder){
+  var safeHtml=dySanitizeHtml(html||'');
+  var fonts=DY_RT_FONTS.map(function(f){return '<option value="'+f[0]+'">'+f[1]+'</option>';}).join('');
+  var sizes=DY_RT_SIZES.map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('');
+  var linehs=DY_RT_LINEH.map(function(l){return '<option value="'+l[0]+'">'+l[1]+'</option>';}).join('');
+  return ''+
+  '<div class="dy-rt-wrap" id="dy-rt-wrap-'+slot+'">'+
+    '<div class="dy-rt-toolbar" id="dy-rt-tb-'+slot+'">'+
+      // Heading + line height
+      '<div class="dy-rt-tg">'+
+        '<select class="dy-rt-sel" data-cmd="formatBlock" title="Paragraph style">'+
+          '<option value="">Normal</option>'+
+          '<option value="h1">H1</option>'+
+          '<option value="h2">H2</option>'+
+          '<option value="h3">H3</option>'+
+          '<option value="blockquote">Quote</option>'+
+          '<option value="pre">Code</option>'+
+        '</select>'+
+        '<select class="dy-rt-sel" data-cmd="lineHeight" title="Line spacing">'+linehs+'</select>'+
+      '</div>'+
+      // Font + size
+      '<div class="dy-rt-tg">'+
+        '<select class="dy-rt-sel" data-cmd="fontName" style="max-width:75px;" title="Font family">'+fonts+'</select>'+
+        '<select class="dy-rt-sel" data-cmd="fontSizePx" style="max-width:55px;" title="Font size (px)">'+sizes+'</select>'+
+      '</div>'+
+      // Bold / italic / underline / strike
+      '<div class="dy-rt-tg">'+
+        '<button type="button" class="dy-rt-btn" data-cmd="bold" title="Bold (Ctrl/Cmd+B)"><b>B</b></button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="italic" title="Italic (Ctrl/Cmd+I)"><i>I</i></button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="underline" title="Underline (Ctrl/Cmd+U)"><u>U</u></button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>'+
+      '</div>'+
+      // Color + highlight
+      '<div class="dy-rt-tg">'+
+        '<button type="button" class="dy-rt-btn dy-rt-color" data-pop="text" title="Text color">A<span class="dy-rt-color-bar" style="background:#dc2626;"></span></button>'+
+        '<button type="button" class="dy-rt-btn dy-rt-color" data-pop="hl" title="Highlight color">▣<span class="dy-rt-color-bar" style="background:#fde68a;"></span></button>'+
+      '</div>'+
+      // Alignment
+      '<div class="dy-rt-tg">'+
+        '<button type="button" class="dy-rt-btn" data-cmd="justifyLeft" title="Align left">⫷</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="justifyCenter" title="Align center">≡</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="justifyRight" title="Align right">⫸</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="justifyFull" title="Justify">≣</button>'+
+      '</div>'+
+      // Lists + indent
+      '<div class="dy-rt-tg">'+
+        '<button type="button" class="dy-rt-btn" data-cmd="insertUnorderedList" title="Bullet list">•≡</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="insertOrderedList" title="Numbered list">1.</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="outdent" title="Outdent">⤺</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="indent" title="Indent">⤻</button>'+
+      '</div>'+
+      // Insert
+      '<div class="dy-rt-tg">'+
+        '<button type="button" class="dy-rt-btn" data-cmd="createLink" title="Insert link">🔗</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="unlink" title="Remove link">⊘🔗</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="hr" title="Insert horizontal line">―</button>'+
+      '</div>'+
+      // Undo / redo / clear
+      '<div class="dy-rt-tg">'+
+        '<button type="button" class="dy-rt-btn" data-cmd="undo" title="Undo (Ctrl/Cmd+Z)">↶</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="redo" title="Redo (Ctrl/Cmd+Y)">↷</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="removeFormat" title="Clear formatting">⌫f</button>'+
+      '</div>'+
+      // Find
+      '<div class="dy-rt-tg dy-rt-find">'+
+        '<input type="text" id="dy-rt-find-'+slot+'" placeholder="Find..." />'+
+        '<span class="dy-rt-findcount" id="dy-rt-findcount-'+slot+'">0/0</span>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="findPrev" title="Previous match">◀</button>'+
+        '<button type="button" class="dy-rt-btn" data-cmd="findNext" title="Next match">▶</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="dy-rt-editor" id="dy-rt-'+slot+'" contenteditable="true" spellcheck="true" data-placeholder="'+escHTML(placeholder||'')+'">'+safeHtml+'</div>'+
+    '<div class="dy-rt-footer">'+
+      '<span class="dy-rt-wc" id="dy-rt-wc-'+slot+'">0 words · 0 chars</span>'+
+      '<span class="dy-rt-fkey">Ctrl/⌘ + B / I / U / Z / Y</span>'+
+    '</div>'+
+  '</div>';
+}
+
+// Convert HTML → plain text, preserving paragraph/list breaks. Used for legacy
+// `*` fields, monthly previews, and giant-text export.
+function dyHtmlToText(html){
+  if(!html)return'';
+  try{
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    // Drop our injected DayFlow plan block — it's transient render UI, not user text
+    Array.prototype.forEach.call(d.querySelectorAll('[data-df-plan="1"]'),function(n){n.parentNode&&n.parentNode.removeChild(n);});
+    // Walk and emit text + line breaks for block elements
+    var BLOCKS={DIV:1,P:1,LI:1,BR:1,H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,UL:0,OL:0,BLOCKQUOTE:1,PRE:1,HR:1,TR:1};
+    var out=[];
+    function walk(node){
+      if(node.nodeType===3){out.push(node.nodeValue);return;}
+      if(node.nodeType!==1)return;
+      var tag=node.tagName;
+      if(tag==='BR'){out.push('\n');return;}
+      if(tag==='HR'){out.push('\n———\n');return;}
+      var isBlock=!!BLOCKS[tag];
+      if(isBlock&&out.length&&out[out.length-1]&&!/\n$/.test(out[out.length-1]))out.push('\n');
+      if(tag==='LI')out.push('• ');
+      var i,kids=node.childNodes;
+      for(i=0;i<kids.length;i++)walk(kids[i]);
+      if(isBlock)out.push('\n');
+    }
+    walk(d);
+    return out.join('').replace(/\n{3,}/g,'\n\n').trim();
+  }catch(e){return String(html).replace(/<[^>]+>/g,'');}
+}
+
+// Convert plain text → minimal HTML (for migrating legacy entries & for
+// pasted-as-plain-text fallbacks).
+function dyTextToHtml(text){
+  if(!text)return'';
+  return String(text).split(/\n\n+/).map(function(para){
+    var safe=para.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    return '<p>'+safe+'</p>';
+  }).join('');
+}
+
+// Sanitise stored or pasted HTML. Allows a conservative tag/attr whitelist.
+// Strips <script>, <iframe>, on* handlers, javascript: URLs, etc.
+var DY_RT_ALLOWED_TAGS={P:1,DIV:1,SPAN:1,BR:1,HR:1,B:1,STRONG:1,I:1,EM:1,U:1,S:1,STRIKE:1,
+  H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,UL:1,OL:1,LI:1,BLOCKQUOTE:1,PRE:1,CODE:1,A:1,FONT:1,
+  MARK:1,SUB:1,SUP:1,SMALL:1};
+var DY_RT_ALLOWED_ATTRS={style:1,href:1,target:1,rel:1,color:1,size:1,face:1,'data-df-plan':1};
+function dySanitizeHtml(html){
+  if(!html)return'';
+  try{
+    var d=document.createElement('div');
+    d.innerHTML=html;
+    function clean(node){
+      var i,kids=Array.prototype.slice.call(node.childNodes);
+      kids.forEach(function(c){
+        if(c.nodeType===8){node.removeChild(c);return;} // comments
+        if(c.nodeType!==1){return;}
+        var tag=c.tagName;
+        if(!DY_RT_ALLOWED_TAGS[tag]){
+          // Replace with its content
+          while(c.firstChild)node.insertBefore(c.firstChild,c);
+          node.removeChild(c);
+          return;
+        }
+        // Strip disallowed attrs and javascript: URLs
+        Array.prototype.slice.call(c.attributes).forEach(function(a){
+          var an=a.name.toLowerCase();
+          if(!DY_RT_ALLOWED_ATTRS[an]){c.removeAttribute(a.name);return;}
+          if(an==='href'){
+            var v=String(a.value).trim();
+            if(/^javascript:/i.test(v)||/^data:text\/html/i.test(v)){c.removeAttribute('href');}
+          }
+          if(an==='style'){
+            // Drop expression()/url(javascript:...) and other risky bits
+            var s=String(a.value).replace(/expression\s*\(/gi,'').replace(/url\s*\(\s*['"]?javascript:/gi,'');
+            c.setAttribute('style',s);
+          }
+        });
+        clean(c);
+      });
+    }
+    clean(d);
+    return d.innerHTML;
+  }catch(e){
+    // If anything goes wrong, fall back to text-only
+    var d2=document.createElement('div');d2.textContent=String(html);return d2.innerHTML;
+  }
+}
+
+// Build the DayFlow plan HTML block to inject inside Today's Briefing
+function dyBuildPlanBlockHtml(dateKey){
+  var blocks=dyReadDayflowPlanForDate(dateKey);
+  var inner='';
+  if(!blocks.length){
+    inner='<div class="dy-rt-plan-empty">No DayFlow blocks placed yet for this day.</div>';
+  } else {
+    inner='<ul>'+blocks.map(function(b){
+      var s=b.startMin||0,e=s+(b.duration||0);
+      return '<li><span class="dy-rt-plan-time">'+dyFmtMinHM(s)+'–'+dyFmtMinHM(e)+'</span><span class="dy-rt-plan-name">'+escHTML(b.name||'(untitled)')+'</span></li>';
+    }).join('')+'</ul>';
+  }
+  return '<div data-df-plan="1" contenteditable="false">'+
+    '<div class="dy-rt-plan-h">📋 DayFlow Plan <span class="dy-rt-plan-tag">auto-imported · live · don\'t edit here</span></div>'+
+    inner+
+  '</div>';
+}
+
+// Inject the DayFlow plan block at the TOP of the briefing editor without
+// disturbing the surrounding user content. If a plan block already exists,
+// replace its inner HTML (so the user's caret position elsewhere is preserved).
+window._dyInjectPlanBlock=function(editor,dateKey){
+  if(!editor)return;
+  var fresh=dyBuildPlanBlockHtml(dateKey);
+  var existing=editor.querySelector('[data-df-plan="1"]');
+  if(existing){
+    // Swap in the fresh node
+    var tmp=document.createElement('div');tmp.innerHTML=fresh;
+    var newNode=tmp.firstChild;
+    existing.parentNode.replaceChild(newNode,existing);
+  } else {
+    // Insert at the top
+    editor.insertAdjacentHTML('afterbegin',fresh);
+  }
+};
+
+// Strip the DayFlow plan block from HTML before storage — it's transient render
+function dyStripPlanBlock(html){
+  if(!html||html.indexOf('data-df-plan')<0)return html;
+  var d=document.createElement('div');
+  d.innerHTML=html;
+  Array.prototype.forEach.call(d.querySelectorAll('[data-df-plan="1"]'),function(n){
+    n.parentNode&&n.parentNode.removeChild(n);
+  });
+  return d.innerHTML;
+}
+
+// Word + char counter
+function dyWordCount(html){
+  var t=dyHtmlToText(html||'');
+  var words=t.trim()?t.trim().split(/\s+/).length:0;
+  return{words:words,chars:t.length};
+}
+
+// Find/highlight inside an editor — wraps matches in <mark class="dy-rt-hit">.
+// Stores state on the editor element so prev/next can step through.
+function dyFindClear(editor){
+  if(!editor)return;
+  Array.prototype.forEach.call(editor.querySelectorAll('mark.dy-rt-hit'),function(m){
+    var p=m.parentNode;
+    while(m.firstChild)p.insertBefore(m.firstChild,m);
+    p.removeChild(m);
+    p.normalize();
+  });
+  editor._dyFindHits=null;editor._dyFindIdx=-1;
+}
+function dyFindApply(editor,query){
+  dyFindClear(editor);
+  if(!query||!editor)return{count:0,idx:0};
+  var re;
+  try{re=new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');}catch(_){return{count:0,idx:0};}
+  var hits=[];
+  function walk(n){
+    if(n.nodeType===3){
+      var v=n.nodeValue,m,parts=[],last=0,found=false;
+      re.lastIndex=0;
+      while((m=re.exec(v))){
+        found=true;
+        if(m.index>last)parts.push(document.createTextNode(v.slice(last,m.index)));
+        var mk=document.createElement('mark');mk.className='dy-rt-hit';mk.textContent=m[0];
+        parts.push(mk);hits.push(mk);
+        last=m.index+m[0].length;
+        if(m[0].length===0){re.lastIndex++;} // safety
+      }
+      if(found){
+        if(last<v.length)parts.push(document.createTextNode(v.slice(last)));
+        var p=n.parentNode;
+        parts.forEach(function(pp){p.insertBefore(pp,n);});
+        p.removeChild(n);
+      }
+      return;
+    }
+    if(n.nodeType!==1)return;
+    if(n.tagName==='MARK'&&n.classList.contains('dy-rt-hit'))return;
+    if(n.getAttribute&&n.getAttribute('data-df-plan')==='1')return; // don't search inside the plan block
+    Array.prototype.slice.call(n.childNodes).forEach(walk);
+  }
+  walk(editor);
+  editor._dyFindHits=hits;editor._dyFindIdx=hits.length?0:-1;
+  if(hits.length){hits[0].classList.add('current');hits[0].scrollIntoView({block:'nearest'});}
+  return{count:hits.length,idx:hits.length?1:0};
+}
+function dyFindStep(editor,delta){
+  var h=editor._dyFindHits;if(!h||!h.length)return{count:0,idx:0};
+  if(editor._dyFindIdx>=0)h[editor._dyFindIdx].classList.remove('current');
+  editor._dyFindIdx=(editor._dyFindIdx+delta+h.length)%h.length;
+  h[editor._dyFindIdx].classList.add('current');
+  h[editor._dyFindIdx].scrollIntoView({block:'nearest'});
+  return{count:h.length,idx:editor._dyFindIdx+1};
+}
+
+// Toolbar state sync — updates the "active" state of B/I/U/etc buttons
+function dyUpdateToolbar(slot){
+  var bar=document.getElementById('dy-rt-tb-'+slot);
+  if(!bar)return;
+  Array.prototype.forEach.call(bar.querySelectorAll('button[data-cmd]'),function(b){
+    var c=b.getAttribute('data-cmd');
+    var on=false;
+    try{
+      if(['bold','italic','underline','strikeThrough','justifyLeft','justifyCenter','justifyRight','justifyFull','insertUnorderedList','insertOrderedList'].indexOf(c)>-1){
+        on=document.queryCommandState(c);
+      }
+    }catch(_){}
+    b.classList.toggle('active',on);
+  });
+}
+
+// Color-picker popup (text or highlight)
+function dyOpenColorPop(anchor,kind,onPick){
+  // Close any other popup first
+  Array.prototype.forEach.call(document.querySelectorAll('.dy-rt-pop'),function(n){n.remove();});
+  var palette=kind==='hl'?DY_RT_HL_COLORS:DY_RT_TEXT_COLORS;
+  var pop=document.createElement('div');pop.className='dy-rt-pop';
+  palette.forEach(function(c){
+    var b=document.createElement('button');b.type='button';b.className='dy-rt-pop-sw';
+    b.style.background=(c==='transparent')?'repeating-linear-gradient(45deg,#fff,#fff 3px,#ddd 3px,#ddd 6px)':c;
+    b.title=c;b.onclick=function(ev){ev.preventDefault();onPick(c);pop.remove();};
+    pop.appendChild(b);
+  });
+  var clear=document.createElement('button');clear.type='button';clear.className='dy-rt-pop-clear';
+  clear.textContent=kind==='hl'?'remove highlight':'reset color';
+  clear.onclick=function(ev){ev.preventDefault();onPick(null);pop.remove();};
+  pop.appendChild(clear);
+  document.body.appendChild(pop);
+  var r=anchor.getBoundingClientRect();
+  pop.style.left=Math.max(8,Math.min(window.innerWidth-180,r.left))+'px';
+  pop.style.top=(r.bottom+4)+'px';
+  // Close on outside click
+  setTimeout(function(){
+    function off(e){if(!pop.contains(e.target)){pop.remove();document.removeEventListener('mousedown',off);}}
+    document.addEventListener('mousedown',off);
+  },10);
+}
+
+// Wire a single rich-text editor (slot = 'iy'|'tb'|'eod') to its toolbar +
+// autosave callback. Storage callback receives the cleaned HTML (plan block stripped).
+function dyAttachRT(slot, dateKey, onSave){
+  var editor=document.getElementById('dy-rt-'+slot);
+  var bar=document.getElementById('dy-rt-tb-'+slot);
+  var wrap=document.getElementById('dy-rt-wrap-'+slot);
+  if(!editor||!bar||!wrap)return;
+
+  var saveTimer=null;
+  function commitSave(){
+    clearTimeout(saveTimer);
+    var stripped=dyStripPlanBlock(editor.innerHTML||'');
+    var clean=dySanitizeHtml(stripped);
+    onSave(clean);
+    var wc=dyWordCount(clean);
+    var wcEl=document.getElementById('dy-rt-wc-'+slot);
+    if(wcEl)wcEl.textContent=wc.words+' word'+(wc.words===1?'':'s')+' · '+wc.chars+' chars';
+  }
+  function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(commitSave,350);}
+
+  // Initial word count
+  (function(){
+    var wc=dyWordCount(dyStripPlanBlock(editor.innerHTML||''));
+    var wcEl=document.getElementById('dy-rt-wc-'+slot);
+    if(wcEl)wcEl.textContent=wc.words+' word'+(wc.words===1?'':'s')+' · '+wc.chars+' chars';
+  })();
+
+  // ── Input / focus / blur ──
+  editor.addEventListener('input',function(){queueSave();dyUpdateToolbar(slot);});
+  editor.addEventListener('keyup',function(){dyUpdateToolbar(slot);});
+  editor.addEventListener('mouseup',function(){dyUpdateToolbar(slot);});
+  editor.addEventListener('focus',function(){wrap.classList.add('focused');});
+  editor.addEventListener('blur',function(){wrap.classList.remove('focused');commitSave();});
+
+  // ── Paste handling — let the browser keep formatting, then sanitise ──
+  editor.addEventListener('paste',function(e){
+    try{
+      var dt=e.clipboardData||window.clipboardData;
+      if(!dt)return; // let default
+      var html=dt.getData('text/html');
+      var text=dt.getData('text/plain');
+      if(html){
+        e.preventDefault();
+        var cleaned=dySanitizeHtml(html);
+        // execCommand('insertHTML') is the easiest way to drop sanitised HTML at caret
+        document.execCommand('insertHTML',false,cleaned);
+        queueSave();
+      } else if(text){
+        // Let default plain-text paste happen
+        queueSave();
+      }
+    }catch(_){}
+  });
+
+  // ── Drag-and-drop guard — DayFlow plan block is non-editable but Firefox can
+  //    still let the user drag it. Block dropping it onto itself or merging.
+  editor.addEventListener('drop',function(e){
+    var dropped=e.dataTransfer&&e.dataTransfer.getData('text/html');
+    if(dropped&&dropped.indexOf('data-df-plan')>-1){e.preventDefault();}
+  });
+
+  // ── Keyboard shortcuts ──
+  editor.addEventListener('keydown',function(e){
+    var mod=e.ctrlKey||e.metaKey;
+    // Block deletion of the plan block from backspace at start
+    if((e.key==='Backspace'||e.key==='Delete')&&!mod){
+      var sel=window.getSelection();
+      if(sel&&sel.rangeCount){
+        var r=sel.getRangeAt(0);
+        if(r.collapsed){
+          var n=r.startContainer;
+          // If we're at the very start of the editor and the previous sibling is the plan block, prevent
+          if(e.key==='Backspace'){
+            // Walk to first non-plan node
+            while(n&&n!==editor&&!(n.previousSibling&&n.previousSibling.nodeType===1&&n.previousSibling.getAttribute&&n.previousSibling.getAttribute('data-df-plan')==='1')){
+              if(n.parentNode===editor)break;
+              n=n.parentNode;
+            }
+          }
+        }
+      }
+    }
+    if(!mod)return;
+    var k=e.key.toLowerCase();
+    // Native handles B / I / U / Z / Y but we re-trigger to make sure the toolbar updates
+    if(k==='b'||k==='i'||k==='u'){setTimeout(function(){dyUpdateToolbar(slot);queueSave();},0);return;}
+    if(k==='z'||k==='y'){setTimeout(function(){dyUpdateToolbar(slot);queueSave();},0);return;}
+  });
+
+  // ── Toolbar clicks ──
+  bar.addEventListener('click',function(e){
+    var btn=e.target.closest('button[data-cmd],button[data-pop]');
+    if(!btn)return;
+    e.preventDefault();
+    editor.focus();
+    var pop=btn.getAttribute('data-pop');
+    if(pop){
+      dyOpenColorPop(btn,pop,function(color){
+        editor.focus();
+        if(pop==='text'){
+          if(color===null){document.execCommand('removeFormat');}
+          else{document.execCommand('foreColor',false,color);}
+        } else { // hl
+          if(color===null||color==='transparent'){
+            // Remove highlight via execCommand (works in most browsers)
+            try{document.execCommand('hiliteColor',false,'transparent');}
+            catch(_){document.execCommand('backColor',false,'transparent');}
+          } else {
+            try{document.execCommand('hiliteColor',false,color);}
+            catch(_){document.execCommand('backColor',false,color);}
+          }
+        }
+        queueSave();dyUpdateToolbar(slot);
+      });
+      return;
+    }
+    var cmd=btn.getAttribute('data-cmd');
+    if(!cmd)return;
+    if(cmd==='hr'){document.execCommand('insertHorizontalRule',false,null);}
+    else if(cmd==='createLink'){
+      var url=window.prompt('Link URL:','https://');
+      if(url){document.execCommand('createLink',false,url);}
+    }
+    else if(cmd==='findNext'){
+      var inp=document.getElementById('dy-rt-find-'+slot);
+      if(inp&&inp.value){
+        var r1=editor._dyFindHits?dyFindStep(editor,1):dyFindApply(editor,inp.value);
+        var c1=document.getElementById('dy-rt-findcount-'+slot);if(c1)c1.textContent=r1.idx+'/'+r1.count;
+      }
+    }
+    else if(cmd==='findPrev'){
+      var inp2=document.getElementById('dy-rt-find-'+slot);
+      if(inp2&&inp2.value){
+        var r2=editor._dyFindHits?dyFindStep(editor,-1):dyFindApply(editor,inp2.value);
+        var c2=document.getElementById('dy-rt-findcount-'+slot);if(c2)c2.textContent=r2.idx+'/'+r2.count;
+      }
+    }
+    else {document.execCommand(cmd,false,null);}
+    queueSave();dyUpdateToolbar(slot);
+  });
+
+  // ── Select changes ──
+  bar.addEventListener('change',function(e){
+    var sel=e.target;
+    if(sel.tagName!=='SELECT')return;
+    var cmd=sel.getAttribute('data-cmd');
+    if(!cmd)return;
+    editor.focus();
+    if(cmd==='formatBlock'){
+      var tag=sel.value||'p';
+      // execCommand wants <h1> on some browsers, h1 on others — try both
+      try{document.execCommand('formatBlock',false,'<'+tag+'>');}
+      catch(_){document.execCommand('formatBlock',false,tag);}
+    } else if(cmd==='lineHeight'){
+      // Wrap selection (or whole editor if empty selection) and set line-height inline
+      var ss=window.getSelection();
+      if(!ss||ss.rangeCount===0){editor.style.lineHeight=sel.value||'';}
+      else {
+        // Apply to all ancestor block elements within selection
+        applyLineHeightToSelection(editor,sel.value||'');
+      }
+    } else if(cmd==='fontName'){
+      document.execCommand('fontName',false,sel.value||'inherit');
+    } else if(cmd==='fontSizePx'){
+      // Built-in fontSize maps 1-7 → tiny→huge; we want px control via span
+      applyFontSizePx(sel.value);
+    }
+    queueSave();dyUpdateToolbar(slot);
+  });
+
+  // ── Find input live ──
+  var findInp=document.getElementById('dy-rt-find-'+slot);
+  if(findInp){
+    findInp.addEventListener('input',function(){
+      var r=dyFindApply(editor,findInp.value);
+      var c=document.getElementById('dy-rt-findcount-'+slot);
+      if(c)c.textContent=r.idx+'/'+r.count;
+    });
+    findInp.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){e.preventDefault();
+        var r=editor._dyFindHits?dyFindStep(editor,e.shiftKey?-1:1):dyFindApply(editor,findInp.value);
+        var c=document.getElementById('dy-rt-findcount-'+slot);
+        if(c)c.textContent=r.idx+'/'+r.count;
+      }
+      if(e.key==='Escape'){findInp.value='';dyFindClear(editor);
+        var c2=document.getElementById('dy-rt-findcount-'+slot);if(c2)c2.textContent='0/0';
+      }
+    });
+  }
+}
+
+// Helper: wrap the current selection with a styled span carrying a font-size
+function applyFontSizePx(px){
+  if(!px)return;
+  var sel=window.getSelection();
+  if(!sel||sel.rangeCount===0||sel.isCollapsed){
+    // No selection — set on a zero-width span at caret so next typed char gets the size
+    return;
+  }
+  try{
+    var range=sel.getRangeAt(0);
+    var span=document.createElement('span');
+    span.style.fontSize=px+'px';
+    var content=range.extractContents();
+    span.appendChild(content);
+    range.insertNode(span);
+    // Reselect span
+    sel.removeAllRanges();
+    var nr=document.createRange();nr.selectNodeContents(span);sel.addRange(nr);
+  }catch(_){}
+}
+function applyLineHeightToSelection(editor,val){
+  var sel=window.getSelection();
+  if(!sel||sel.rangeCount===0)return;
+  var range=sel.getRangeAt(0);
+  // Find all block-level ancestors touched by range
+  var BLOCKS={P:1,DIV:1,LI:1,H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,BLOCKQUOTE:1,PRE:1};
+  function blockAncestor(n){
+    while(n&&n!==editor){
+      if(n.nodeType===1&&BLOCKS[n.tagName])return n;
+      n=n.parentNode;
+    }
+    return null;
+  }
+  var startBlk=blockAncestor(range.startContainer);
+  var endBlk=blockAncestor(range.endContainer);
+  if(!startBlk&&!endBlk){editor.style.lineHeight=val;return;}
+  // Walk all blocks between start and end inclusively
+  var all=editor.querySelectorAll('p,div,li,h1,h2,h3,h4,h5,h6,blockquote,pre');
+  var inside=false,touched=0;
+  for(var i=0;i<all.length;i++){
+    var el=all[i];
+    if(el===startBlk)inside=true;
+    if(inside){
+      el.style.lineHeight=val||'';
+      touched++;
+    }
+    if(el===endBlk)break;
+  }
+  // If selection doesn't span any block boundary, just set on startBlk
+  if(touched===0&&startBlk){startBlk.style.lineHeight=val||'';}
+}
+
 // ── Public entry point (called from switchTab) ──
 window._dairyRender=function(){
   dyLoad();
@@ -3244,7 +3943,7 @@ window.addEventListener('message',function(e){
 // Also re-render when storage changes from another tab
 window.addEventListener('storage',function(e){
   if(!e.key)return;
-  if(['ad_dairy','ad_shifts','ad2026','dayflow_note'].indexOf(e.key)===-1)return;
+  if(['ad_dairy','ad_shifts','ad2026','dayflow_note','dayflow_placed'].indexOf(e.key)===-1)return;
   if(e.key==='ad_dairy'){dyLoad();}
   if(dyBuilt&&document.getElementById('panel-dairy')&&document.getElementById('panel-dairy').classList.contains('active')){
     dyRenderAll();
