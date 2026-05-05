@@ -2851,12 +2851,26 @@ function dyReadDayflowPlanForDate(k){
     if(!raw)return[];
     var arr=JSON.parse(raw);
     if(!Array.isArray(arr))return[];
+
+    // DayFlow may store old blocks as render-window minutes, e.g. 6495 min = 108:15.
+    // Dairy only needs clock time for that block's own date, so normalize to 0-1439.
     return arr.filter(function(b){return b&&b.dateKey===k;})
+      .map(function(b){
+        var c=Object.assign({},b);
+        c.startMin=dyClockMin(c.startMin);
+        c.duration=Math.max(0,Math.round(c.duration||0));
+        return c;
+      })
       .sort(function(a,b){return (a.startMin||0)-(b.startMin||0);});
   }catch(_){return[];}
 }
+function dyClockMin(m){
+  m=Math.round(Number(m)||0);
+  m=((m%1440)+1440)%1440;
+  return m;
+}
 function dyFmtMinHM(m){
-  m=Math.max(0,Math.round(m||0));
+  m=dyClockMin(m);
   var h=Math.floor(m/60),mm=m%60;
   return dyPad(h)+':'+dyPad(mm);
 }
