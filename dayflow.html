@@ -263,38 +263,40 @@ window.addEventListener('message',function(e){
 
       var wakeMin = wakeHH*60+wakeMM;
       var endMin;
-      if(hasWS){
+      // For TODAY, Kickstart must always run from Wake Up → current time.
+      // This makes the block appear immediately when Wake Up is entered, even
+      // before Productivity Started is filled in.
+      if(dateKey===todayKey){
+        var nowRM = getNowRenderMin();
+        var wakeRM = getRenderMinForDateKey(todayKey)+wakeMin;
+        var dur = nowRM-wakeRM;
+        if(dur<=0){
+          // Wake time is in the future / invalid for now — remove stale block.
+          var staleTodayId='auto_kickstart_'+dateKey;
+          placed.filter(function(pb){return pb.id===staleTodayId||pb.id==='auto_kickstart_today';}).forEach(function(pb){
+            if(pb.el)pb.el.remove();
+            placed=placed.filter(function(q){return q.id!==pb.id;});
+          });
+          updateNotepad(); saveState();
+          return;
+        }
+        endMin = wakeMin + Math.max(5,dur);
+      } else if(hasWS){
         endMin = wsHH*60+wsMM;
-        // If workStart < wake we treat as invalid for now (no cross-midnight Kickstart)
-        // and silently bail out — we don't crash and we don't make a tiny block.
+        if(endMin<=wakeMin)endMin+=24*60;
         if(endMin<=wakeMin){
-          // Remove any stale block for this date so the canvas matches reality
           var staleId='auto_kickstart_'+dateKey;
           placed.filter(function(pb){return pb.id===staleId;}).forEach(function(pb){
             if(pb.el)pb.el.remove();
             placed=placed.filter(function(q){return q.id!==staleId;});
           });
-          // Also remove the legacy "today" id if it's there
-          if(dateKey===todayKey){
-            placed.filter(function(pb){return pb.id==='auto_kickstart_today';}).forEach(function(pb){
-              if(pb.el)pb.el.remove();
-              placed=placed.filter(function(q){return q.id!=='auto_kickstart_today';});
-            });
-          }
           updateNotepad(); saveState();
           return;
         }
       } else {
-        // No workStart yet — only fall back to "now" if the date is today,
-        // otherwise we can't infer an end and we don't create a block.
-        if(dateKey!==todayKey){
-          updateNotepad(); saveState();
-          return;
-        }
-        var nowRM = getNowRenderMin();
-        var wakeRM = getRenderMinForDateKey(todayKey)+wakeMin;
-        var dur = Math.max(5, nowRM-wakeRM);
-        endMin = wakeMin + dur;
+        // Past/future dates need an explicit end time; today's date uses now.
+        updateNotepad(); saveState();
+        return;
       }
 
       var dur2 = Math.max(5, endMin - wakeMin);

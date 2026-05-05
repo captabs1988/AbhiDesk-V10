@@ -865,12 +865,23 @@ function pad(n){return String(n).padStart(2,'0');}
 function gap(w,s){
   if(!w||!s)return'';
   var wp=w.split(':').map(Number),sp=s.split(':').map(Number);
-  var d=(sp[0]*60+sp[1])-(wp[0]*60+wp[1]);
-  if(isNaN(d)||d<=0)return'';
+  if(wp.length<2||sp.length<2||isNaN(wp[0])||isNaN(sp[0]))return'';
+  var wm=wp[0]*60+(wp[1]||0), sm=sp[0]*60+(sp[1]||0);
+  var d=sm-wm;
+  // If productivity starts after midnight, treat it as next-day instead of blank.
+  if(d<=0)d+=24*60;
+  if(isNaN(d)||d<=0||d>24*60)return'';
   var h=Math.floor(d/60),m=d%60;
   return h>0?h+'h '+m+'m':m+'m';
 }
-function isLong(w,s){if(!w||!s)return false;var wp=w.split(':').map(Number),sp=s.split(':').map(Number);return(sp[0]*60+sp[1])-(wp[0]*60+wp[1])>=120;}
+function isLong(w,s){
+  if(!w||!s)return false;
+  var wp=w.split(':').map(Number),sp=s.split(':').map(Number);
+  if(wp.length<2||sp.length<2||isNaN(wp[0])||isNaN(sp[0]))return false;
+  var d=(sp[0]*60+(sp[1]||0))-(wp[0]*60+(wp[1]||0));
+  if(d<=0)d+=24*60;
+  return d>=120;
+}
 function slept(sl,wu,sameDay){
   if(!sl||!wu)return'';
   var sp=sl.split(':').map(Number),wp=wu.split(':').map(Number);
@@ -913,10 +924,24 @@ function notifyDayflowKickstart(dateKey){
       msg.workStartHH=parseInt(sParts[0]);
       msg.workStartMM=parseInt(sParts[1])||0;
     }
+
+    // DayFlow is lazy-loaded. Force-load it and retry the post so Kickstart is
+    // created immediately after Wake Up is entered, not only after opening DayFlow.
     var dfFr=document.getElementById('fr-dayflow');
-    if(dfFr&&dfFr.contentWindow){
-      try{dfFr.contentWindow.postMessage(msg,'*');}catch(_){}
+    if(dfFr){
+      if(ISRC&&ISRC.dayflow&&!loaded.dayflow){
+        dfFr.src=ISRC.dayflow;
+        loaded.dayflow=true;
+      }
+      var attempts=0;
+      var send=function(){
+        attempts++;
+        try{if(dfFr.contentWindow)dfFr.contentWindow.postMessage(msg,'*');}catch(_){}
+        if(attempts<8)setTimeout(send,attempts<3?80:250);
+      };
+      send();
     }
+
     // Notify the inline Dairy panel too — wake/work-start drives its header strip
     if(typeof window.dairyOnFitlogChange==='function'){
       try{window.dairyOnFitlogChange(dateKey);}catch(_){}
@@ -1703,7 +1728,9 @@ st.textContent=`
 .dy-shift-time{font-size:14px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold);}
 .dy-shift-extra{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
 
-.dy-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:8px;}
+.dy-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:8px;resize:vertical;overflow:auto;min-height:230px;max-height:75vh;}
+.dy-section::after{content:'↘ drag to resize';align-self:flex-end;font-size:8px;font-family:'JetBrains Mono',monospace;color:var(--muted);opacity:.45;pointer-events:none;}
+.dy-section:hover::after{opacity:.85;}
 .dy-section h3{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--accent);letter-spacing:1.8px;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
 .dy-section h3 .ico{font-size:14px;}
 .dy-section.yesterday h3{color:var(--accent2);}
@@ -1764,7 +1791,7 @@ st.textContent=`
 /* ════════════════════════════════════════════════════════
    RICH-TEXT EDITOR (Dairy text sections)
    ════════════════════════════════════════════════════════ */
-.dy-rt-wrap{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg);}
+.dy-rt-wrap{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg);flex:1 1 auto;min-height:160px;}
 .dy-rt-wrap.focused{border-color:var(--accent);}
 .dy-section.yesterday .dy-rt-wrap.focused{border-color:var(--accent2);}
 .dy-section.debrief .dy-rt-wrap.focused{border-color:var(--green);}
@@ -1790,7 +1817,7 @@ st.textContent=`
 .dy-rt-find input:focus{border-color:var(--accent);}
 .dy-rt-findcount{font-size:9px;color:var(--muted);min-width:36px;text-align:center;}
 
-.dy-rt-editor{min-height:160px;max-height:600px;overflow-y:auto;padding:10px 12px;font-family:'DM Sans','Syne',sans-serif;font-size:13px;line-height:1.7;color:var(--text);outline:none;word-wrap:break-word;}
+.dy-rt-editor{min-height:160px;max-height:none;flex:1 1 auto;overflow-y:auto;padding:10px 12px;font-family:'DM Sans','Syne',sans-serif;font-size:13px;line-height:1.7;color:var(--text);outline:none;word-wrap:break-word;}
 .dy-rt-editor:empty:before{content:attr(data-placeholder);color:var(--muted);font-style:italic;pointer-events:none;}
 .dy-rt-editor:focus{outline:none;}
 .dy-rt-editor::-webkit-scrollbar{width:6px;}
@@ -1821,6 +1848,10 @@ st.textContent=`
 .dy-rt-editor [data-df-plan="1"] .dy-rt-plan-time{color:var(--accent);font-weight:700;flex-shrink:0;min-width:106px;}
 .dy-rt-editor [data-df-plan="1"] .dy-rt-plan-name{flex:1;}
 .dy-rt-editor [data-df-plan="1"] .dy-rt-plan-empty{color:var(--muted);font-style:italic;font-size:10px;}
+
+
+.dy-rt-editor [data-df-block]{margin:0 0 6px;padding:3px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.55;}
+.dy-rt-editor [data-df-block] b{font-weight:900;color:var(--accent);}
 
 /* COLOR PICKER POPUP */
 .dy-rt-pop{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px;display:grid;grid-template-columns:repeat(7,18px);gap:4px;z-index:9999;box-shadow:0 6px 22px rgba(0,0,0,.45);}
@@ -2851,9 +2882,8 @@ window.dairyOnDayflowChange=function(dateKey){
   if(!dyBuilt)return;
   if(dyData.view!=='daily')return;
   if(dateKey&&dateKey!==dyData.cursor)return;
-  // Re-inject the plan block inside the Today's Briefing rich-text editor
-  var ed=document.getElementById('dy-rt-tb');
-  if(ed&&typeof window._dyInjectPlanBlock==='function')window._dyInjectPlanBlock(ed,dyData.cursor);
+  dySyncDayflowLines(dyData.cursor);
+  dyRenderAll();
 };
 
 // ── Build skeleton ──
@@ -2931,6 +2961,8 @@ function dyRenderDaily(){
   var shifts=dyReadShifts(k);
   var todayK=dyTodayKey();
   var dateClass=(k===todayK)?'today':'';
+  dySyncDayflowLines(k);
+  e=dyGetEntry(k,false);
 
   var shiftHTML='';
   if(shifts.length){
@@ -2990,12 +3022,7 @@ function dyRenderDaily(){
   // Wire up each rich-text editor
   dyAttachRT('iy', k, function(html){dyPatchEntry(k,{instructionsFromYesterdayHtml:html, instructionsFromYesterday:dyHtmlToText(html)});});
   dyAttachRT('tb', k, function(html){dyPatchEntry(k,{todaysBriefingHtml:html, todaysBriefing:dyHtmlToText(html)});});
-  dyAttachRT('eod', k, function(html){dyPatchEntry(k,{endOfDayDebriefingHtml:html, endOfDayDebriefing:dyHtmlToText(html)});});
-
-  // Inject the live DayFlow plan into the Today's Briefing editor
-  var tbEd=document.getElementById('dy-rt-tb');
-  if(tbEd)window._dyInjectPlanBlock(tbEd,k);
-}
+  dyAttachRT('eod', k, function(html){dyPatchEntry(k,{endOfDayDebriefingHtml:html, endOfDayDebriefing:dyHtmlToText(html)});});}
 
 function dyFmtMetaTs(iso){
   try{var d=new Date(iso);if(isNaN(d.getTime()))return iso;return dyPad(d.getDate())+'/'+dyPad(d.getMonth()+1)+'/'+d.getFullYear()+' '+dyPad(d.getHours())+':'+dyPad(d.getMinutes());}catch(_){return iso;}
@@ -3161,7 +3188,7 @@ function dyBuildGiantText(monthCursor){
     var e=dyGetEntry(k,false);
     var f=dyReadFitlog(k);
     var shifts=dyReadShifts(k);
-    var planBlocks=dyReadDayflowPlanForDate(k);
+    var planBlocks=[]; // DayFlow lines are now stored inside Today's Briefing as editable bold lines
     // Prefer HTML→plain conversion (covers the rich-text era), fall back to legacy plain
     var iyText=(e.instructionsFromYesterdayHtml?dyHtmlToText(e.instructionsFromYesterdayHtml):e.instructionsFromYesterday)||'';
     var tbText=(e.todaysBriefingHtml?dyHtmlToText(e.todaysBriefingHtml):e.todaysBriefing)||'';
@@ -3475,7 +3502,7 @@ function dyTextToHtml(text){
 var DY_RT_ALLOWED_TAGS={P:1,DIV:1,SPAN:1,BR:1,HR:1,B:1,STRONG:1,I:1,EM:1,U:1,S:1,STRIKE:1,
   H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,UL:1,OL:1,LI:1,BLOCKQUOTE:1,PRE:1,CODE:1,A:1,FONT:1,
   MARK:1,SUB:1,SUP:1,SMALL:1};
-var DY_RT_ALLOWED_ATTRS={style:1,href:1,target:1,rel:1,color:1,size:1,face:1,'data-df-plan':1};
+var DY_RT_ALLOWED_ATTRS={style:1,href:1,target:1,rel:1,color:1,size:1,face:1,'data-df-plan':1,'data-df-block':1};
 function dySanitizeHtml(html){
   if(!html)return'';
   try{
@@ -3536,22 +3563,41 @@ function dyBuildPlanBlockHtml(dateKey){
   '</div>';
 }
 
+
+// Add DayFlow blocks as normal editable one-line briefing entries.
+// Each block gets appended once; after that, the user can edit the line freely.
+function dyDayflowBlockKey(b){
+  return escHTML(String(b.id||b.blockId||((b.name||'block')+'_'+(b.dateKey||'')+'_'+(b.startMin||0)+'_'+(b.duration||0))));
+}
+function dyBuildDayflowLineHtml(b){
+  var st=b.startMin||0,en=st+(b.duration||0);
+  var key=dyDayflowBlockKey(b);
+  return '<p data-df-block="'+key+'"><b>'+escHTML(b.name||'(untitled)')+' — '+dyFmtMinHM(st)+'–'+dyFmtMinHM(en)+'</b></p>';
+}
+function dySyncDayflowLines(dateKey){
+  var e=dyGetEntry(dateKey,true);
+  if(!e.todaysBriefingHtml&&e.todaysBriefing)e.todaysBriefingHtml=dyTextToHtml(e.todaysBriefing);
+  var html=e.todaysBriefingHtml||'';
+  var blocks=dyReadDayflowPlanForDate(dateKey);
+  var added=false;
+  blocks.forEach(function(b){
+    var key=dyDayflowBlockKey(b);
+    if(html.indexOf('data-df-block="'+key+'"')>-1 || html.indexOf("data-df-block='"+key+"'")>-1)return;
+    html += (html.trim()?'' : '') + dyBuildDayflowLineHtml(b);
+    added=true;
+  });
+  if(added){
+    e.todaysBriefingHtml=dySanitizeHtml(html);
+    e.todaysBriefing=dyHtmlToText(e.todaysBriefingHtml);
+    dyPatchEntry(dateKey,{todaysBriefingHtml:e.todaysBriefingHtml,todaysBriefing:e.todaysBriefing});
+  }
+}
+
 // Inject the DayFlow plan block at the TOP of the briefing editor without
 // disturbing the surrounding user content. If a plan block already exists,
 // replace its inner HTML (so the user's caret position elsewhere is preserved).
 window._dyInjectPlanBlock=function(editor,dateKey){
-  if(!editor)return;
-  var fresh=dyBuildPlanBlockHtml(dateKey);
-  var existing=editor.querySelector('[data-df-plan="1"]');
-  if(existing){
-    // Swap in the fresh node
-    var tmp=document.createElement('div');tmp.innerHTML=fresh;
-    var newNode=tmp.firstChild;
-    existing.parentNode.replaceChild(newNode,existing);
-  } else {
-    // Insert at the top
-    editor.insertAdjacentHTML('afterbegin',fresh);
-  }
+  // Legacy no-op: DayFlow now appends editable one-line entries via dySyncDayflowLines().
 };
 
 // Strip the DayFlow plan block from HTML before storage — it's transient render
