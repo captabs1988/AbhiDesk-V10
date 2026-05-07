@@ -32,6 +32,7 @@
     background:#fff3cd;color:#856404;border-bottom:1px solid #ffc107;
   }
   .storage-banner.error{background:#fff0f0;color:#b00020;border-color:#ffb3b3;}
+  .save-stamp{font-size:11px;font-weight:650;color:#34c759;white-space:nowrap;}
 
   .main-body{flex:1 1 auto;min-height:0;display:flex;overflow:hidden;background:#f2f2f7;}
   .feed{
@@ -130,10 +131,12 @@
   <div id="storageBanner" class="storage-banner"></div>
   <div class="topbar">
     <h1>💪 Vanity — Fitness Tracker 2026</h1>
+    <button class="topbar-btn green" type="button" onclick="submitData()">✓ Submit / Save</button>
     <button class="topbar-btn green" type="button" onclick="exportData()">⬇ Export</button>
     <button class="topbar-btn orange" type="button" onclick="importData()">⬆ Import</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
     <button class="topbar-btn" type="button" onclick="goNow()">📍 Current Week</button>
+    <span class="save-stamp" id="saveStamp">Not submitted yet</span>
   </div>
 
   <div class="main-body">
@@ -198,21 +201,45 @@
     catch(e){ return false; }
   }
 
+  function validDataObject(x){ return !!(x && typeof x === 'object' && !Array.isArray(x)); }
+
   function readData(){
     try{
       var raw = localStorage.getItem(VN_LS);
       var parsed = raw ? JSON.parse(raw) : {};
-      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+      if (validDataObject(parsed) && Object.keys(parsed).length) return parsed;
+      // Safety net: if primary key was blank/corrupt, recover the last submitted mirror.
+      var backup = localStorage.getItem(VN_LS + '_submitted_backup');
+      var bParsed = backup ? JSON.parse(backup) : {};
+      return validDataObject(bParsed) ? bParsed : {};
     }catch(e){ return {}; }
   }
 
-  function save(){
+  function save(silent){
     try{
       localStorage.setItem(VN_LS, JSON.stringify(VD));
+      localStorage.setItem(VN_LS + '_autosave_backup', JSON.stringify(VD));
+      updateSaveStamp(silent ? 'Autosaved' : 'Saved');
+      return true;
     }catch(e){
       showBanner('⚠️ Could not save to localStorage: ' + (e.message || e) + ' — use ⬇ Export to back up your data.', true);
+      return false;
     }
   }
+
+  function updateSaveStamp(prefix){
+    var el=document.getElementById('saveStamp');
+    if(!el) return;
+    var t=new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    el.textContent=(prefix||'Saved')+' '+t;
+  }
+
+  window.submitData = function(){
+    if(save(false)){
+      try{ localStorage.setItem(VN_LS + '_submitted_backup', JSON.stringify(VD)); }catch(e){}
+      showBanner('✅ Vanity data submitted and saved. Refresh should keep it now.', false);
+    }
+  };
 
   window.exportData = function(){
     try{
@@ -364,7 +391,7 @@
               VD[wk].days[dk][key] = sel.value;
               sel.className = 'm-sel' + (sel.value ? ' picked' : '');
               activeDashDate = parseDateKey(dk);
-              save(); refreshSummary(wk); updateDash();
+              save(true); refreshSummary(wk); updateDash();
             });
             mw.appendChild(sel);
           });
@@ -383,7 +410,7 @@
               btn.className = 'tick' + (VD[wk].well[wKey] ? ' on' : '');
               btn.textContent = VD[wk].well[wKey] ? '✓' : '';
               activeDashDate = parseDateKey(dk);
-              save(); refreshSummary(wk); updateDash();
+              save(true); refreshSummary(wk); updateDash();
             });
             row.appendChild(label); row.appendChild(btn); ww.appendChild(row);
           });
@@ -399,7 +426,7 @@
 
       updateDash();
       setTimeout(goNow, 100);
-      save();
+      save(true);
     }catch(err){
       console.error('Vanity render failed:', err);
       feed.innerHTML = '<div class="error-box"><b>Vanity render failed.</b><br>' + String(err && err.message ? err.message : err) + '</div>';
@@ -473,6 +500,8 @@
     var el = document.getElementById('wk-' + isoWeek(new Date()));
     if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
   };
+
+  window.addEventListener('beforeunload', function(){ save(true); });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
   else render();
