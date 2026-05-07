@@ -356,10 +356,11 @@
         });
         var sh = document.createElement('div'); sh.className = 'col-hdr sum-hdr'; sh.textContent = 'WEEK'; grid.appendChild(sh);
 
-        for (var i=0;i<7;i++){
-          var d = new Date(mon); d.setDate(mon.getDate()+i);
-          var dk = dateKey(d);
-          var dayData = ensure(wk).days[dk] || {m1:'',m2:''};
+        // Use block-scoped variables here so each dropdown/tick saves to its own date, not the final Sunday cell.
+        for (let i=0;i<7;i++){
+          let d = new Date(mon); d.setDate(mon.getDate()+i);
+          let dk = dateKey(d);
+          let dayData = ensure(wk).days[dk] || {m1:'',m2:''};
 
           var cell = document.createElement('div');
           cell.className = 'day-cell' + (dk === today ? ' is-today' : '') + (SHIFT_DAYS[dk] ? ' is-shift-day' : '');
@@ -379,9 +380,9 @@
 
           var mw = document.createElement('div'); mw.className = 'muscle-wrap';
           [1,2].forEach(function(slot){
-            var key = 'm' + slot;
-            var cur = dayData[key] || '';
-            var sel = document.createElement('select');
+            let key = 'm' + slot;
+            let cur = dayData[key] || '';
+            let sel = document.createElement('select');
             sel.className = 'm-sel' + (cur ? ' picked' : '');
             sel.appendChild(makeOption('', '—', cur));
             MUSCLES.forEach(function(m){ sel.appendChild(makeOption(m, m, cur)); });
@@ -399,11 +400,11 @@
 
           var ww = document.createElement('div'); ww.className = 'well-wrap';
           WELLNESS.forEach(function(well){
-            var wKey = dk + ':' + well.toLowerCase();
-            var row = document.createElement('div'); row.className = 'well-item';
-            var label = document.createElement('span'); label.className = 'well-lbl'; label.textContent = well;
-            var btn = document.createElement('button'); btn.type = 'button';
-            var on = !!ensure(wk).well[wKey];
+            let wKey = dk + ':' + well.toLowerCase();
+            let row = document.createElement('div'); row.className = 'well-item';
+            let label = document.createElement('span'); label.className = 'well-lbl'; label.textContent = well;
+            let btn = document.createElement('button'); btn.type = 'button';
+            let on = !!ensure(wk).well[wKey];
             btn.className = 'tick' + (on ? ' on' : ''); btn.textContent = on ? '✓' : '';
             btn.addEventListener('click', function(){
               ensure(wk); VD[wk].well[wKey] = !VD[wk].well[wKey];
