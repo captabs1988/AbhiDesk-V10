@@ -23,6 +23,15 @@
     font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;font-family:inherit;
   }
   .topbar-btn:hover{background:#007aff;color:#fff;}
+  .topbar-btn.green{border-color:#34c759;color:#34c759;}
+  .topbar-btn.green:hover{background:#34c759;color:#fff;}
+  .topbar-btn.orange{border-color:#ff9500;color:#ff9500;}
+  .topbar-btn.orange:hover{background:#ff9500;color:#fff;}
+  .storage-banner{
+    display:none;padding:8px 16px;font-size:12px;font-weight:650;
+    background:#fff3cd;color:#856404;border-bottom:1px solid #ffc107;
+  }
+  .storage-banner.error{background:#fff0f0;color:#b00020;border-color:#ffb3b3;}
 
   .main-body{flex:1 1 auto;min-height:0;display:flex;overflow:hidden;background:#f2f2f7;}
   .feed{
@@ -118,8 +127,12 @@
 </style>
 </head>
 <body>
+  <div id="storageBanner" class="storage-banner"></div>
   <div class="topbar">
     <h1>💪 Vanity — Fitness Tracker 2026</h1>
+    <button class="topbar-btn green" type="button" onclick="exportData()">⬇ Export</button>
+    <button class="topbar-btn orange" type="button" onclick="importData()">⬆ Import</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
     <button class="topbar-btn" type="button" onclick="goNow()">📍 Current Week</button>
   </div>
 
@@ -151,6 +164,14 @@
   }
   loadShiftDays();
 
+  // Check localStorage on startup
+  if (!lsAvailable()) {
+    // Slight delay so DOM is ready for banner
+    setTimeout(function(){
+      showBanner('⚠️ localStorage is blocked in this environment — data will NOT persist on refresh. Use ⬇ Export to save your data manually.', true);
+    }, 200);
+  }
+
   // Listen for shift updates from parent
   window.addEventListener('message',function(e){
     if(e.data&&(e.data.type==='shifts_updated'||e.data.type==='job_days_updated')){
@@ -163,6 +184,20 @@
     }
   });
 
+  function showBanner(msg, isError){
+    var b = document.getElementById('storageBanner');
+    if (!b) return;
+    b.textContent = msg;
+    b.className = 'storage-banner' + (isError ? ' error' : '');
+    b.style.display = 'block';
+    if (!isError) setTimeout(function(){ b.style.display='none'; }, 3000);
+  }
+
+  function lsAvailable(){
+    try{ localStorage.setItem('__vtest__','1'); localStorage.removeItem('__vtest__'); return true; }
+    catch(e){ return false; }
+  }
+
   function readData(){
     try{
       var raw = localStorage.getItem(VN_LS);
@@ -170,7 +205,47 @@
       return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
     }catch(e){ return {}; }
   }
-  function save(){ try{ localStorage.setItem(VN_LS, JSON.stringify(VD)); }catch(e){} }
+
+  function save(){
+    try{
+      localStorage.setItem(VN_LS, JSON.stringify(VD));
+    }catch(e){
+      showBanner('⚠️ Could not save to localStorage: ' + (e.message || e) + ' — use ⬇ Export to back up your data.', true);
+    }
+  }
+
+  window.exportData = function(){
+    try{
+      var blob = new Blob([JSON.stringify(VD, null, 2)], {type:'application/json'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'vanity-backup-' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showBanner('✅ Data exported successfully!', false);
+    }catch(e){ showBanner('Export failed: ' + e.message, true); }
+  };
+
+  window.importData = function(){
+    document.getElementById('importFile').click();
+  };
+
+  window.handleImport = function(e){
+    var file = e.target.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        var parsed = JSON.parse(ev.target.result);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid format');
+        VD = parsed;
+        save();
+        render();
+        showBanner('✅ Data imported successfully!', false);
+      }catch(err){ showBanner('❌ Import failed: ' + err.message, true); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   // Important: repairs old/broken ad_vanity shapes instead of assuming the object is valid.
   function ensure(wk){
