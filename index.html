@@ -142,6 +142,23 @@ table.tbl input[type=time]:focus{border-bottom-color:var(--accent);background:rg
 .pledge-canvas-wrap::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,#2a2f45 1px,transparent 1px);background-size:24px 24px;z-index:0;}
 .pledge-card{position:absolute;padding:14px 16px;cursor:grab;user-select:none;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:600;line-height:1.5;border:2px solid rgba(255,255,255,.12);box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:2;overflow:visible;}
 .pledge-card:hover{box-shadow:0 8px 32px rgba(0,0,0,.55);}
+.pledge-card.selected,.pledge-section.selected{outline:2px solid var(--gold);outline-offset:4px;box-shadow:0 0 0 4px rgba(245,158,11,.18),0 8px 32px rgba(0,0,0,.55);}
+.pledge-section{position:absolute;background:rgba(108,138,255,.07);border:2px dashed rgba(108,138,255,.45);border-radius:18px;z-index:1;box-shadow:0 8px 28px rgba(0,0,0,.18);user-select:none;overflow:visible;}
+.pledge-section-title{position:absolute;top:-28px;left:12px;padding:4px 10px;border-radius:999px;background:#12141f;border:1px solid rgba(108,138,255,.4);color:var(--accent);font-size:10px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:.5px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+.pledge-section-count{position:absolute;right:10px;top:8px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);background:rgba(0,0,0,.18);padding:3px 7px;border-radius:999px;}
+.pledge-section .pledge-card-del{opacity:0;}
+.pledge-section:hover .pledge-card-del{opacity:1;}
+.pledge-section-hint{position:absolute;left:12px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);opacity:.75;pointer-events:none;}
+.pledge-select-box{position:absolute;border:1px solid var(--accent);background:rgba(108,138,255,.12);z-index:120;pointer-events:none;border-radius:6px;}
+.pledge-chip-btn{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:#1e2330;color:var(--text);cursor:pointer;font-family:'Syne',sans-serif;flex-shrink:0;}
+.pledge-chip-btn:hover{border-color:var(--accent);color:var(--accent);}
+.pledge-mini-status{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+[data-theme="light"] .pledge-section{background:rgba(58,95,217,.06);border-color:rgba(58,95,217,.38);box-shadow:0 8px 28px rgba(0,0,0,.10);}
+[data-theme="light"] .pledge-section-title{background:#ffffff;border-color:rgba(58,95,217,.35);color:#3a5fd9;}
+[data-theme="light"] .pledge-section-count{background:rgba(58,95,217,.08);}
+[data-theme="light"] .pledge-select-box{background:rgba(58,95,217,.10);}
+[data-theme="light"] .pledge-chip-btn{background:#f0f2f8;border-color:#d1d8e8;color:#1a2040;}
+
 .pledge-card .card-text{width:100%;word-break:break-word;pointer-events:none;}
 .pledge-card-del{position:absolute;top:-9px;right:-9px;width:22px;height:22px;border-radius:50%;background:#ef4444;border:2px solid #0d0f18;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;z-index:20;line-height:1;}
 .pledge-card:hover .pledge-card-del{opacity:1;}
@@ -432,8 +449,12 @@ table.tbl input[type=time]:focus{border-bottom-color:var(--accent);background:rg
 <div class="pledge-toolbar">
 <button class="pledge-add-btn" onclick="openPledgeModal()" title="Add quote card">+</button>
 <h2>// Pledge - Morning Motivation</h2>
+<button class="pledge-chip-btn" onclick="addPledgeSection()" title="Create a section/group area">＋ Section</button>
+<button class="pledge-chip-btn" onclick="selectAllPledgeCards()" title="Select all boxes">Select All</button>
+<button class="pledge-chip-btn" onclick="clearPledgeSelection()" title="Clear selected boxes">Clear</button>
+<span class="pledge-mini-status" id="pledgeSelStatus">0 selected</span>
 <button onclick="exportPledge()" style="margin-left:auto;font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:#1e2330;color:var(--text);cursor:pointer;font-family:'Syne',sans-serif;flex-shrink:0;">↓ Export Text</button>
-<span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;">Hover card: x=delete, corner=resize, dbl-click=edit</span>
+<span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;">Ctrl/⌘ click = multi-select · drag empty area = select box · drag selection = move together</span>
 </div>
 <div class="pledge-canvas-wrap" id="pledgeWrap">
 <div class="pledge-canvas" id="pledgeCanvas"></div>
@@ -1175,9 +1196,21 @@ var PLEDGE_LS='ad_pledge';var pledgeCards=[];
 var pmShape='rect',pmBgColor='#1e2a4a',pmTxtColor='#e2e8f0';
 var pledgeScale=1,pledgeOffX=0,pledgeOffY=0;
 var pledgePanning=false,pledgePanStart={x:0,y:0,ox:0,oy:0};
-var pledgeDragging=null,pledgeDragOff={x:0,y:0};
-try{pledgeCards=JSON.parse(localStorage.getItem(PLEDGE_LS)||'[]');}catch(e){}
-function savePledge(){if(!pledgeCards||!Array.isArray(pledgeCards))pledgeCards=[];try{localStorage.setItem(PLEDGE_LS,JSON.stringify(pledgeCards));}catch(e){} const _rows=pledgeCards.map(c=>({id:c.id||'',quote:c.quote||'',shape:c.shape||'',bgColor:c.bgColor||'',txtColor:c.txtColor||'',font:c.font||'',fontSize:c.fontSize||16,x:c.x||0,y:c.y||0,w:c.w||0,h:c.h||0}));postToSheet('pledge',_rows);}
+var pledgeDragging=null,pledgeDragStart={x:0,y:0,items:[]};
+var pledgeResize=null,pledgeSelectBox=null,pledgeSelectionStart=null;
+var pledgeSelected=new Set();
+try{pledgeCards=JSON.parse(localStorage.getItem(PLEDGE_LS)||'[]');}catch(e){pledgeCards=[];}
+if(!Array.isArray(pledgeCards))pledgeCards=[];
+
+function pledgeIsSection(c){return c&&c.type==='section';}
+function pledgeSections(){return pledgeCards.filter(pledgeIsSection);}
+function pledgeItems(){return pledgeCards.filter(function(c){return !pledgeIsSection(c);});}
+function pledgeById(id){return pledgeCards.find(function(c){return c.id===id;});}
+function pledgeCanvasPoint(e){var wrap=document.getElementById('pledgeWrap');var r=wrap.getBoundingClientRect();return{x:(e.clientX-r.left-pledgeOffX)/pledgeScale,y:(e.clientY-r.top-pledgeOffY)/pledgeScale};}
+function pledgeRect(c){return{x:c.x||0,y:c.y||0,w:c.w||(pledgeIsSection(c)?360:220),h:c.h||(pledgeIsSection(c)?230:130)};}
+function pledgeHitSection(card){var r=pledgeRect(card),cx=r.x+r.w/2,cy=r.y+r.h/2;var hit=null;pledgeSections().forEach(function(s){if(s.id===card.id)return;var sr=pledgeRect(s);if(cx>=sr.x&&cx<=sr.x+sr.w&&cy>=sr.y&&cy<=sr.y+sr.h)hit=s;});return hit;}
+function updatePledgeStatus(){var el=document.getElementById('pledgeSelStatus');if(el)el.textContent=pledgeSelected.size+' selected';}
+function savePledge(){if(!pledgeCards||!Array.isArray(pledgeCards))pledgeCards=[];try{localStorage.setItem(PLEDGE_LS,JSON.stringify(pledgeCards));}catch(e){} const _rows=pledgeCards.map(c=>({id:c.id||'',type:c.type||'card',parentId:c.parentId||'',quote:c.quote||c.title||'',shape:c.shape||'',bgColor:c.bgColor||'',txtColor:c.txtColor||'',font:c.font||'',fontSize:c.fontSize||16,x:c.x||0,y:c.y||0,w:c.w||0,h:c.h||0}));postToSheet('pledge',_rows);}
 
 function openPledgeModal(){document.getElementById('pmQuote').value='';document.getElementById('pledgeModalBack').classList.add('open');setTimeout(function(){document.getElementById('pmQuote').focus();},100);}
 function closePledgeModal(){document.getElementById('pledgeModalBack').classList.remove('open');}
@@ -1194,123 +1227,136 @@ function addPledgeCard(){
   var wrap=document.getElementById('pledgeWrap');
   var cx=(wrap.clientWidth/2-pledgeOffX)/pledgeScale-110;
   var cy=(wrap.clientHeight/2-pledgeOffY)/pledgeScale-65;
-  cx+=Math.round((Math.random()-0.5)*120);cy+=Math.round((Math.random()-0.5)*80);
+  var selectedSections=Array.from(pledgeSelected).map(pledgeById).filter(pledgeIsSection);
+  var parent=selectedSections[0]||null;
+  if(parent){var pr=pledgeRect(parent);cx=pr.x+28+Math.random()*80;cy=pr.y+45+Math.random()*60;}
+  else{cx+=Math.round((Math.random()-0.5)*120);cy+=Math.round((Math.random()-0.5)*80);}
   var font=document.getElementById('pmFont').value;
   var fsize=parseInt(document.getElementById('pmSize').value);
-  pledgeCards.push({id:id,shape:pmShape,bgColor:pmBgColor,txtColor:pmTxtColor,font:font,fontSize:fsize,quote:q,x:Math.round(cx),y:Math.round(cy),w:220,h:130});
-  savePledge();renderPledge();closePledgeModal();
+  pledgeCards.push({id:id,type:'card',parentId:parent?parent.id:'',shape:pmShape,bgColor:pmBgColor,txtColor:pmTxtColor,font:font,fontSize:fsize,quote:q,x:Math.round(cx),y:Math.round(cy),w:220,h:130});
+  pledgeSelected.clear();pledgeSelected.add(id);savePledge();renderPledge();closePledgeModal();
 }
+function addPledgeSection(){
+  var title=(window.prompt('Section name:','Morning / Job Hunt / Deep Work')||'').trim();
+  if(!title)return;
+  var wrap=document.getElementById('pledgeWrap');
+  var cx=(wrap.clientWidth/2-pledgeOffX)/pledgeScale-180;
+  var cy=(wrap.clientHeight/2-pledgeOffY)/pledgeScale-115;
+  var id='ps_'+Date.now();
+  pledgeCards.push({id:id,type:'section',title:title,x:Math.round(cx),y:Math.round(cy),w:380,h:240,bgColor:'rgba(108,138,255,.07)'});
+  pledgeSelected.clear();pledgeSelected.add(id);savePledge();renderPledge();
+}
+function selectAllPledgeCards(){pledgeSelected.clear();pledgeItems().forEach(function(c){pledgeSelected.add(c.id);});renderPledge();}
+function clearPledgeSelection(){pledgeSelected.clear();renderPledge();}
 
 function deletePledgeCard(id){
-  pledgeCards=pledgeCards.filter(function(c){return c.id!==id;});
+  var c=pledgeById(id);if(!c)return;
+  if(pledgeIsSection(c)){var kids=pledgeItems().filter(function(x){return x.parentId===id;}).length;if(kids&&!confirm('Delete this section? Boxes inside will stay on the board.'))return;pledgeItems().forEach(function(x){if(x.parentId===id)x.parentId='';});}
+  pledgeCards=pledgeCards.filter(function(x){return x.id!==id;});pledgeSelected.delete(id);
   savePledge();renderPledge();
 }
 function editPledgeCard(id){
-  var card=pledgeCards.find(function(c){return c.id===id;});if(!card)return;
-  var nq=window.prompt('Edit your pledge:',card.quote);
-  if(nq===null)return;card.quote=nq.trim()||card.quote;savePledge();renderPledge();
+  var card=pledgeById(id);if(!card)return;
+  var nq=window.prompt(pledgeIsSection(card)?'Edit section name:':'Edit your pledge:',pledgeIsSection(card)?card.title:card.quote);
+  if(nq===null)return;if(pledgeIsSection(card))card.title=nq.trim()||card.title;else card.quote=nq.trim()||card.quote;savePledge();renderPledge();
 }
 function exportPledge(){
   if(!pledgeCards.length){alert('No pledge cards to export.');return;}
-  var txt=pledgeCards.map(function(c,i){return(i+1)+'. '+c.quote;}).join('\n\n');
-  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));a.download='MyPledges.txt';a.click();
+  var sections=pledgeSections();var loose=pledgeItems().filter(function(c){return !c.parentId;});var lines=[];
+  sections.forEach(function(s){lines.push('## '+(s.title||'Section'));pledgeItems().filter(function(c){return c.parentId===s.id;}).forEach(function(c,i){lines.push((i+1)+'. '+c.quote);});lines.push('');});
+  if(loose.length){lines.push('## Loose pledges');loose.forEach(function(c,i){lines.push((i+1)+'. '+c.quote);});}
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/plain'}));a.download='MyPledges.txt';a.click();
 }
 
-function getBorderRadius(shape){
-  if(shape==='rect')return'10px';if(shape==='round')return'60px';
-  if(shape==='circle')return'50%';if(shape==='diamond')return'8px';
-  if(shape==='banner')return'4px';return'10px';
-}
+function getBorderRadius(shape){if(shape==='rect')return'10px';if(shape==='round')return'60px';if(shape==='circle')return'50%';if(shape==='diamond')return'8px';if(shape==='banner')return'4px';return'10px';}
 function getClipPath(shape){return shape==='banner'?'polygon(0 0,100% 0,92% 50%,100% 100%,0 100%)':'none';}
+function countSectionChildren(id){return pledgeItems().filter(function(c){return c.parentId===id;}).length;}
 
 function renderPledge(){
   var canvas=document.getElementById('pledgeCanvas');if(!canvas)return;
   if(!pledgeCards||!Array.isArray(pledgeCards))pledgeCards=[];
   canvas.innerHTML='';
   canvas.style.transform='translate('+pledgeOffX+'px,'+pledgeOffY+'px) scale('+pledgeScale+')';
-  pledgeCards.forEach(function(card){
+  updatePledgeStatus();
+  pledgeSections().forEach(function(section){
+    var el=document.createElement('div');el.className='pledge-section'+(pledgeSelected.has(section.id)?' selected':'');el.id=section.id;
+    var r=pledgeRect(section);el.style.left=r.x+'px';el.style.top=r.y+'px';el.style.width=r.w+'px';el.style.height=r.h+'px';
+    var title=document.createElement('div');title.className='pledge-section-title';title.textContent=section.title||'Section';el.appendChild(title);
+    var cnt=document.createElement('div');cnt.className='pledge-section-count';cnt.textContent=countSectionChildren(section.id)+' boxes';el.appendChild(cnt);
+    var hint=document.createElement('div');hint.className='pledge-section-hint';hint.textContent='Select section, then + to add box inside';el.appendChild(hint);
+    var del=document.createElement('button');del.className='pledge-card-del';del.textContent='x';del.title='Delete section';del.addEventListener('mousedown',function(e){e.stopPropagation();});del.addEventListener('click',function(e){e.stopPropagation();deletePledgeCard(section.id);});el.appendChild(del);
+    var res=document.createElement('div');res.className='pledge-resize';el.appendChild(res);
+    el.ondblclick=function(e){e.stopPropagation();editPledgeCard(section.id);};
+    el.addEventListener('mousedown',function(e){pledgeEntityMouseDown(e,section,res);});
+    canvas.appendChild(el);
+  });
+  pledgeItems().forEach(function(card){
     var el=document.createElement('div');
-    el.className='pledge-card';el.id=card.id;
-    var w=card.w||220,h=card.h||130;
-    var isRotated=(card.shape==='diamond');
-    el.style.left=card.x+'px';el.style.top=card.y+'px';
-    el.style.width=w+'px';el.style.height=h+'px';
-    el.style.background=card.bgColor||'#1e2a4a';
-    el.style.color=card.txtColor||'#e2e8f0';
-    el.style.fontFamily=(card.font||'Syne')+',sans-serif';
-    el.style.fontSize=(card.fontSize||13)+'px';
-    el.style.borderRadius=getBorderRadius(card.shape);
-    el.style.clipPath=getClipPath(card.shape);
-    if(isRotated)el.style.transform='rotate(45deg)';
-    var txt=document.createElement('div');txt.className='card-text';
-    if(isRotated)txt.style.transform='rotate(-45deg)';
-    txt.textContent=card.quote;el.appendChild(txt);
-    // DELETE BUTTON
-    var del=document.createElement('button');
-    del.className='pledge-card-del';del.textContent='x';del.title='Delete card';
-    (function(id,btn){
-      btn.addEventListener('mousedown',function(e){e.stopPropagation();});
-      btn.addEventListener('click',function(e){e.stopPropagation();if(confirm('Delete this card?'))deletePledgeCard(id);});
-    })(card.id,del);
-    el.appendChild(del);
-    // RESIZE HANDLE
-    var res=document.createElement('div');res.className='pledge-resize';
-    el.appendChild(res);
-    // DOUBLE CLICK EDIT
-    (function(id){el.ondblclick=function(e){e.stopPropagation();editPledgeCard(id);};})(card.id);
-    // MOUSEDOWN: drag vs resize
-    el.addEventListener('mousedown',function(e){
-      if(e.target===res||res.contains(e.target)){
-        e.stopPropagation();e.preventDefault();
-        var rsX=e.clientX,rsY=e.clientY,rsW=card.w||220,rsH=card.h||130;
-        function onMove(e){
-          card.w=Math.max(80,Math.round(rsW+(e.clientX-rsX)/pledgeScale));
-          card.h=Math.max(50,Math.round(rsH+(e.clientY-rsY)/pledgeScale));
-          el.style.width=card.w+'px';el.style.height=card.h+'px';
-        }
-        function onUp(){savePledge();document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
-        document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
-        return;
-      }
-      if(e.target.classList.contains('pledge-card-del'))return;
-      e.stopPropagation();
-      pledgeDragging=card;
-      pledgeDragOff.x=e.clientX/pledgeScale-card.x;
-      pledgeDragOff.y=e.clientY/pledgeScale-card.y;
-      el.style.zIndex=100;
-    });
+    el.className='pledge-card'+(pledgeSelected.has(card.id)?' selected':'');el.id=card.id;
+    var w=card.w||220,h=card.h||130;var isRotated=(card.shape==='diamond');
+    el.style.left=(card.x||0)+'px';el.style.top=(card.y||0)+'px';el.style.width=w+'px';el.style.height=h+'px';
+    el.style.background=card.bgColor||'#1e2a4a';el.style.color=card.txtColor||'#e2e8f0';
+    el.style.fontFamily=(card.font||'Syne')+',sans-serif';el.style.fontSize=(card.fontSize||13)+'px';
+    el.style.borderRadius=getBorderRadius(card.shape);el.style.clipPath=getClipPath(card.shape);
+    el.style.zIndex=card.parentId?4:3;if(isRotated)el.style.transform='rotate(45deg)';
+    var txt=document.createElement('div');txt.className='card-text';if(isRotated)txt.style.transform='rotate(-45deg)';txt.textContent=card.quote;el.appendChild(txt);
+    var del=document.createElement('button');del.className='pledge-card-del';del.textContent='x';del.title='Delete card';del.addEventListener('mousedown',function(e){e.stopPropagation();});del.addEventListener('click',function(e){e.stopPropagation();if(confirm('Delete this card?'))deletePledgeCard(card.id);});el.appendChild(del);
+    var res=document.createElement('div');res.className='pledge-resize';el.appendChild(res);
+    el.ondblclick=function(e){e.stopPropagation();editPledgeCard(card.id);};
+    el.addEventListener('mousedown',function(e){pledgeEntityMouseDown(e,card,res);});
     canvas.appendChild(el);
   });
 }
 
+function pledgeEntityMouseDown(e,card,res){
+  if(e.target===res||res.contains(e.target)){
+    e.stopPropagation();e.preventDefault();var rsX=e.clientX,rsY=e.clientY,rsW=card.w||(pledgeIsSection(card)?380:220),rsH=card.h||(pledgeIsSection(card)?240:130);
+    pledgeResize={card:card,x:rsX,y:rsY,w:rsW,h:rsH};return;
+  }
+  if(e.target.classList.contains('pledge-card-del'))return;
+  e.stopPropagation();
+  if(e.ctrlKey||e.metaKey){if(pledgeSelected.has(card.id))pledgeSelected.delete(card.id);else pledgeSelected.add(card.id);renderPledge();return;}
+  if(!pledgeSelected.has(card.id)){pledgeSelected.clear();pledgeSelected.add(card.id);renderPledge();}
+  var p=pledgeCanvasPoint(e);
+  var ids=Array.from(pledgeSelected);
+  var moveIds=new Set(ids);
+  ids.forEach(function(id){var c=pledgeById(id);if(pledgeIsSection(c)){pledgeItems().forEach(function(k){if(k.parentId===id)moveIds.add(k.id);});}});
+  pledgeDragging=card;
+  pledgeDragStart={x:p.x,y:p.y,items:Array.from(moveIds).map(function(id){var c=pledgeById(id);return c?{id:id,x:c.x||0,y:c.y||0}:null;}).filter(Boolean)};
+}
+
 var pledgeWrap=document.getElementById('pledgeWrap');
 pledgeWrap.addEventListener('mousedown',function(e){
-  if(pledgeDragging)return;
-  pledgePanning=true;pledgePanStart={x:e.clientX,y:e.clientY,ox:pledgeOffX,oy:pledgeOffY};
-  pledgeWrap.classList.add('panning');
+  if(e.button!==0||pledgeDragging||pledgeResize)return;
+  if(e.shiftKey){
+    var p=pledgeCanvasPoint(e);pledgeSelectionStart=p;
+    pledgeSelectBox=document.createElement('div');pledgeSelectBox.className='pledge-select-box';document.getElementById('pledgeCanvas').appendChild(pledgeSelectBox);return;
+  }
+  pledgePanning=true;pledgePanStart={x:e.clientX,y:e.clientY,ox:pledgeOffX,oy:pledgeOffY};pledgeWrap.classList.add('panning');
 });
 pledgeWrap.addEventListener('wheel',function(e){
-  e.preventDefault();var delta=e.deltaY>0?-0.08:0.08;
-  pledgeScale=Math.min(3,Math.max(0.2,pledgeScale+delta));
+  e.preventDefault();var old=pledgeScale;var delta=e.deltaY>0?-0.08:0.08;pledgeScale=Math.min(3,Math.max(0.2,pledgeScale+delta));
+  var rect=pledgeWrap.getBoundingClientRect();var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  pledgeOffX=mx-(mx-pledgeOffX)*(pledgeScale/old);pledgeOffY=my-(my-pledgeOffY)*(pledgeScale/old);
   document.getElementById('pledgeCanvas').style.transform='translate('+pledgeOffX+'px,'+pledgeOffY+'px) scale('+pledgeScale+')';
 },{passive:false});
 document.addEventListener('mousemove',function(e){
-  if(pledgeDragging){
-    pledgeDragging.x=Math.round(e.clientX/pledgeScale-pledgeDragOff.x);
-    pledgeDragging.y=Math.round(e.clientY/pledgeScale-pledgeDragOff.y);
-    var el=document.getElementById(pledgeDragging.id);
-    if(el){el.style.left=pledgeDragging.x+'px';el.style.top=pledgeDragging.y+'px';}
-  }
-  if(pledgePanning&&!pledgeDragging){
-    pledgeOffX=pledgePanStart.ox+(e.clientX-pledgePanStart.x);
-    pledgeOffY=pledgePanStart.oy+(e.clientY-pledgePanStart.y);
-    var cv=document.getElementById('pledgeCanvas');
-    if(cv)cv.style.transform='translate('+pledgeOffX+'px,'+pledgeOffY+'px) scale('+pledgeScale+')';
-  }
+  if(pledgeResize){var c=pledgeResize.card;c.w=Math.max(pledgeIsSection(c)?180:80,Math.round(pledgeResize.w+(e.clientX-pledgeResize.x)/pledgeScale));c.h=Math.max(pledgeIsSection(c)?120:50,Math.round(pledgeResize.h+(e.clientY-pledgeResize.y)/pledgeScale));var el=document.getElementById(c.id);if(el){el.style.width=c.w+'px';el.style.height=c.h+'px';}return;}
+  if(pledgeDragging){var p=pledgeCanvasPoint(e);var dx=p.x-pledgeDragStart.x,dy=p.y-pledgeDragStart.y;pledgeDragStart.items.forEach(function(it){var c=pledgeById(it.id);if(!c)return;c.x=Math.round(it.x+dx);c.y=Math.round(it.y+dy);var el=document.getElementById(c.id);if(el){el.style.left=c.x+'px';el.style.top=c.y+'px';}});return;}
+  if(pledgeSelectBox&&pledgeSelectionStart){var p2=pledgeCanvasPoint(e);var x=Math.min(pledgeSelectionStart.x,p2.x),y=Math.min(pledgeSelectionStart.y,p2.y),w=Math.abs(p2.x-pledgeSelectionStart.x),h=Math.abs(p2.y-pledgeSelectionStart.y);pledgeSelectBox.style.left=x+'px';pledgeSelectBox.style.top=y+'px';pledgeSelectBox.style.width=w+'px';pledgeSelectBox.style.height=h+'px';return;}
+  if(pledgePanning&&!pledgeDragging){pledgeOffX=pledgePanStart.ox+(e.clientX-pledgePanStart.x);pledgeOffY=pledgePanStart.oy+(e.clientY-pledgePanStart.y);var cv=document.getElementById('pledgeCanvas');if(cv)cv.style.transform='translate('+pledgeOffX+'px,'+pledgeOffY+'px) scale('+pledgeScale+')';}
 });
-document.addEventListener('mouseup',function(){
-  if(pledgeDragging){savePledge();pledgeDragging=null;}
+document.addEventListener('mouseup',function(e){
+  if(pledgeResize){savePledge();pledgeResize=null;}
+  if(pledgeDragging){pledgeDragStart.items.forEach(function(it){var c=pledgeById(it.id);if(c&&!pledgeIsSection(c)){var hit=pledgeHitSection(c);c.parentId=hit?hit.id:'';}});savePledge();pledgeDragging=null;renderPledge();}
+  if(pledgeSelectBox&&pledgeSelectionStart){var p=pledgeCanvasPoint(e);var x=Math.min(pledgeSelectionStart.x,p.x),y=Math.min(pledgeSelectionStart.y,p.y),w=Math.abs(p.x-pledgeSelectionStart.x),h=Math.abs(p.y-pledgeSelectionStart.y);pledgeSelected.clear();pledgeCards.forEach(function(c){var r=pledgeRect(c);if(r.x<x+w&&r.x+r.w>x&&r.y<y+h&&r.y+r.h>y)pledgeSelected.add(c.id);});pledgeSelectBox.remove();pledgeSelectBox=null;pledgeSelectionStart=null;renderPledge();}
   if(pledgePanning){pledgePanning=false;pledgeWrap.classList.remove('panning');}
+});
+document.addEventListener('keydown',function(e){
+  var active=document.activeElement;if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA'||active.isContentEditable))return;
+  if(e.key==='Escape'){clearPledgeSelection();}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='a'&&document.getElementById('pledge-panel').classList.contains('active')){e.preventDefault();selectAllPledgeCards();}
+  if(e.key==='Delete'&&pledgeSelected.size&&document.getElementById('pledge-panel').classList.contains('active')){if(confirm('Delete selected pledge items?')){Array.from(pledgeSelected).forEach(deletePledgeCard);}}
 });
 
 
